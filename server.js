@@ -131,7 +131,15 @@ app.post('/api/rooms', async (req, res) => {
 
 // List rooms
 app.get('/api/rooms', (req, res) => {
-  res.json(Object.values(rooms).map(r => ({ id: r.id, name: r.name, code: r.code })));
+  // 1. 방 정보를 배열로 변환
+  const roomList = Object.values(rooms).map(r => ({ id: r.id, name: r.name, code: r.code }));
+
+  // 2. 가나다 -> ABC -> 123 순으로 정렬 로직 추가
+  roomList.sort((a, b) => {
+    return a.name.localeCompare(b.name, 'ko-KR', { numeric: true, sensitivity: 'base' });
+  });
+
+  res.json(roomList);
 });
 
 // Get room
