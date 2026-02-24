@@ -42,24 +42,31 @@
 
   <!-- Host player bar -->
   <div class="player-bar" id="player-bar" style="display:none;">
-    <div class="now-playing">
-      <div class="now-playing-art" id="now-playing-art">♪</div>
-      <div class="now-playing-info">
-        <p class="now-playing-title" id="now-playing-title">재생 중인 곡 없음</p>
-        <p class="now-playing-sub" id="now-playing-sub">—</p>
+    <div class="player-bar-top">
+      <div class="now-playing">
+        <div class="now-playing-art" id="now-playing-art">♪</div>
+        <div class="now-playing-info">
+          <p class="now-playing-title" id="now-playing-title">재생 중인 곡 없음</p>
+          <p class="now-playing-sub" id="now-playing-sub">—</p>
+        </div>
+      </div>
+      <div class="player-controls">
+        <button class="ctrl-btn" id="btn-shuffle" title="셔플">⇄</button>
+        <button class="ctrl-btn" id="btn-prev" title="이전">⏮</button>
+        <button class="ctrl-btn ctrl-btn--main" id="btn-playpause">▶</button>
+        <button class="ctrl-btn" id="btn-next" title="다음">⏭</button>
+        <button class="ctrl-btn" id="btn-repeat" title="반복">↻</button>
+      </div>
+      <div class="player-volume">
+        <span class="vol-icon">🔊</span>
+        <input type="range" id="volume-slider" min="0" max="100" value="80" class="vol-slider" />
+        <span class="vol-label" id="vol-label">80</span>
       </div>
     </div>
-    <div class="player-controls">
-      <button class="ctrl-btn" id="btn-shuffle" title="셔플">⇄</button>
-      <button class="ctrl-btn" id="btn-prev" title="이전">⏮</button>
-      <button class="ctrl-btn ctrl-btn--main" id="btn-playpause">▶</button>
-      <button class="ctrl-btn" id="btn-next" title="다음">⏭</button>
-      <button class="ctrl-btn" id="btn-repeat" title="반복">↻</button>
-    </div>
-    <div class="player-volume">
-      <span class="vol-icon">🔊</span>
-      <input type="range" id="volume-slider" min="0" max="100" value="80" class="vol-slider" />
-      <span class="vol-label" id="vol-label">80</span>
+    <div class="player-bar-timeline">
+      <span class="timeline-time" id="time-current">0:00</span>
+      <input type="range" id="timeline-slider" min="0" max="100" value="0" step="0.1" class="timeline-slider" />
+      <span class="timeline-time" id="time-duration">0:00</span>
     </div>
   </div>
 

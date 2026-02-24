@@ -102,6 +102,10 @@ socket.on('play-song', ({ song }) => {
   document.getElementById('guest-playing-icon').textContent = '▶';
   log(`▶ "${song.title}" 재생 중`, 'play');
   highlightCurrentSong(song.id);
+  // Reset timeline
+  if (timelineSlider) { timelineSlider.value = 0; updateTimelineFill(0); }
+  document.getElementById('time-current').textContent = '0:00';
+  document.getElementById('time-duration').textContent = '0:00';
 });
 
 socket.on('play', ({ videoId, time }) => {
@@ -276,12 +280,76 @@ document.getElementById('volume-slider').oninput = e => {
   applyVolume(parseInt(e.target.value));
 };
 
+// ── Timeline (seek bar) ───────────────────────────
+let timelineIsSeeking = false;
+const timelineSlider = document.getElementById('timeline-slider');
+
+timelineSlider.addEventListener('mousedown', () => { timelineIsSeeking = true; });
+timelineSlider.addEventListener('touchstart', () => { timelineIsSeeking = true; }, { passive: true });
+
+timelineSlider.addEventListener('input', () => {
+  const pct  = parseFloat(timelineSlider.value);
+  const frac = pct / 100;
+  const dur  = (ytPlayer && ytReady) ? (ytPlayer.getDuration() || 0) : 0;
+  document.getElementById('time-current').textContent = formatTime(frac * dur);
+  updateTimelineFill(pct);
+});
+
+timelineSlider.addEventListener('change', () => {
+  if (!isHost) return;
+  const frac = parseFloat(timelineSlider.value) / 100;
+  const dur  = (ytPlayer && ytReady) ? (ytPlayer.getDuration() || 0) : 0;
+  const seekTo = frac * dur;
+  socket.emit('seek', { time: seekTo });
+  timelineIsSeeking = false;
+});
+
+function updateTimelineFill(pct) {
+  // CSS gradient to show played portion in accent color
+  timelineSlider.style.background =
+    `linear-gradient(to right, var(--accent) ${pct}%, var(--border) ${pct}%)`;
+}
+
+// Poll playback position every second
+setInterval(() => {
+  if (!isHost || !ytPlayer || !ytReady) return;
+  const state = ytPlayer.getPlayerState();
+  if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.PAUSED) return;
+  const cur = ytPlayer.getCurrentTime() || 0;
+  const dur = ytPlayer.getDuration() || 0;
+  if (!timelineIsSeeking && dur > 0) {
+    const pct = (cur / dur) * 100;
+    timelineSlider.value = pct;
+    updateTimelineFill(pct);
+  }
+  document.getElementById('time-current').textContent = formatTime(cur);
+  document.getElementById('time-duration').textContent = formatTime(dur);
+}, 1000);
+
+function formatTime(sec) {
+  if (!sec || isNaN(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
 function updatePlayBtn(playing) {
   document.getElementById('btn-playpause').textContent = playing ? '⏸' : '▶';
 }
 function updateShuffleBtn(on) {
-  document.getElementById('btn-shuffle').classList.toggle('active', on);
-  document.getElementById('btn-shuffle').title = on ? '셔플 켜짐' : '셔플';
+  const btn = document.getElementById('btn-shuffle');
+  btn.classList.toggle('active', on);
+  btn.title = on ? '셔플 켜짐 (클릭해서 끄기)' : '셔플 (클릭해서 켜기)';
+  btn.textContent = on ? '⇄' : '⇄';
+  // Show/hide shuffle indicator dot
+  let dot = document.getElementById('shuffle-dot');
+  if (!dot) {
+    dot = document.createElement('span');
+    dot.id = 'shuffle-dot';
+    dot.className = 'ctrl-indicator';
+    btn.parentElement.insertBefore(dot, btn.nextSibling);
+  }
+  dot.style.display = on ? '' : 'none';
 }
 function updateRepeatBtn(mode) {
   const btn = document.getElementById('btn-repeat');
@@ -454,19 +522,19 @@ document.getElementById('yt-url-input').oninput = debounce(async e => {
   }
   preview.classList.remove('hidden');
   preview.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;display:block;" />`;
-  // Fetch YouTube title as default
+  // Fetch YouTube title and prefill the input value
   try {
     const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
     const d = await r.json();
-    customInput.placeholder = d.title || '곡 이름을 직접 입력하세요...';
-    customInput._ytTitle = d.title || '';
+    customInput.value = d.title || '';
     customInput._ytChannel = d.author_name || '';
   } catch {
-    customInput.placeholder = '곡 이름을 직접 입력하세요...';
-    customInput._ytTitle = '';
+    customInput.value = '';
     customInput._ytChannel = '';
   }
   titleWrap.classList.remove('hidden');
+  customInput.focus();
+  customInput.select();
 }, 400);
 
 document.getElementById('add-song-confirm').onclick = async () => {
@@ -475,9 +543,7 @@ document.getElementById('add-song-confirm').onclick = async () => {
   if (!videoId) { toast('올바른 YouTube 링크를 입력해주세요.', 'error'); return; }
 
   const customInput = document.getElementById('custom-title-input');
-  const customTitle = customInput.value.trim();
-  // Use custom title if entered; otherwise use the fetched YouTube title
-  const title = customTitle || customInput._ytTitle || '(제목 없음)';
+  const title = customInput.value.trim() || '(제목 없음)';
   const channelTitle = customInput._ytChannel || '';
 
   socket.emit('add-song', { playlistId: addSongTargetPlaylistId, song: { videoId, title, channelTitle } });

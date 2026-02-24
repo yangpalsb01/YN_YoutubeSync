@@ -215,10 +215,37 @@ a { color: var(--accent); text-decoration: none; }
 
 /* Player bar */
 .player-bar {
-  height: var(--player-h); display: flex; align-items: center; gap: 1.5rem;
-  padding: 0 1.4rem; background: var(--surface); border-bottom: 1px solid var(--border);
+  height: auto; display: flex; flex-direction: column;
+  background: var(--surface); border-bottom: 1px solid var(--border);
   flex-shrink: 0; z-index: 9; box-shadow: var(--shadow-sm);
 }
+.player-bar-top {
+  display: flex; align-items: center; gap: 1.5rem;
+  padding: 0 1.4rem; height: var(--player-h);
+}
+.player-bar-timeline {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0 1.4rem 0.55rem; border-top: 1px solid var(--border);
+  padding-top: 0.45rem;
+}
+.timeline-slider {
+  flex: 1; -webkit-appearance: none; height: 4px;
+  background: var(--border); border-radius: 2px; outline: none; cursor: pointer;
+  transition: height 0.1s;
+}
+.timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  background: var(--accent); border-radius: 50%; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  transition: transform 0.1s;
+}
+.timeline-slider:hover { height: 5px; }
+.timeline-slider:hover::-webkit-slider-thumb { transform: scale(1.2); }
+.timeline-time {
+  font-size: 0.72rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+  min-width: 2.8em;
+}
+.timeline-time:last-child { text-align: right; }
 .player-bar--guest { background: var(--surface2); }
 
 .now-playing { display: flex; align-items: center; gap: 0.85rem; min-width: 0; flex: 1; }
@@ -247,7 +274,18 @@ a { color: var(--accent); text-decoration: none; }
   display: flex !important; align-items: center; justify-content: center;
 }
 .ctrl-btn--main:hover { background: #111 !important; }
-.ctrl-btn.active { color: var(--accent) !important; }
+.ctrl-btn.active {
+  color: var(--accent) !important;
+  background: rgba(43,43,43,0.1) !important;
+  font-weight: 700;
+}
+/* Shuffle/repeat label below button */
+.ctrl-btn[data-label]::after {
+  content: attr(data-label);
+  display: block; font-size: 0.55rem; line-height: 1;
+  margin-top: 1px; letter-spacing: 0.05em;
+  color: inherit;
+}
 
 .player-volume { display: flex; align-items: center; gap: 0.45rem; }
 .vol-icon { font-size: 0.9rem; color: var(--text-muted); }
@@ -434,4 +472,20 @@ a { color: var(--accent); text-decoration: none; }
 /* room-layout: guest gets full width */
 .room-layout.guest-mode {
   grid-template-columns: 1fr;
+}
+
+/* ── Shuffle / Repeat active state — 더 뚜렷하게 ── */
+.ctrl-btn.active {
+  color: var(--accent) !important;
+  background: rgba(43,43,43,0.1) !important;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+/* Shuffle active indicator dot */
+.ctrl-indicator {
+  display: inline-block; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--accent);
+  position: relative; top: -8px; left: -6px;
+  margin-right: -5px;
 }
