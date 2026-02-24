@@ -61,6 +61,8 @@ socket.on('room-state', state => {
   document.getElementById('volume-slider').value = state.volume;
   updateShuffleBtn(state.shuffle);
   updateRepeatBtn(state.repeat);
+  // 첫 로드 시 모든 플레이리스트를 접힌 상태로 초기화
+  state.playlists.forEach(pl => collapsedPlaylists.add(pl.id));
   renderPlaylists(state.playlists);
   renderQueue(state.queue);
   if (state.currentSong) {
@@ -136,7 +138,14 @@ socket.on('state-update', patch => {
 });
 
 socket.on('playlists-update', playlists => {
-  if (roomState) roomState.playlists = playlists;
+  if (roomState) {
+    // 새로 추가된 플레이리스트는 접힌 상태로 시작
+    playlists.forEach(pl => {
+      const isNew = !roomState.playlists.some(p => p.id === pl.id);
+      if (isNew) collapsedPlaylists.add(pl.id);
+    });
+    roomState.playlists = playlists;
+  }
   renderPlaylists(playlists);
 });
 
