@@ -40,7 +40,7 @@ socket.on('room-state', state => {
   if (isHost) {
     document.getElementById('host-badge').style.display = '';
     document.getElementById('player-bar').style.display = 'flex';
-    document.getElementById('player-bar-guest').style.display = 'none';
+    const pbg2 = document.getElementById('player-bar-guest'); if (pbg2) pbg2.style.display = 'none';
     document.getElementById('room-name-hint').style.display = '';
     document.getElementById('room-name').title = '클릭하여 이름 변경';
     document.getElementById('delete-room-btn').style.display = '';
@@ -48,7 +48,7 @@ socket.on('room-state', state => {
     document.getElementById('chat-section').style.display = '';
   } else {
     document.getElementById('player-bar').style.display = 'none';
-    document.getElementById('player-bar-guest').style.display = 'flex';
+    const pbg = document.getElementById('player-bar-guest'); if (pbg) pbg.style.display = 'flex';
     document.getElementById('room-name').style.cursor = 'default';
     document.getElementById('room-name').title = '';
     document.getElementById('sidebar').style.display = 'none';
@@ -81,7 +81,7 @@ socket.on('became-host', () => {
   isHost = true;
   document.getElementById('host-badge').style.display = '';
   document.getElementById('player-bar').style.display = 'flex';
-  document.getElementById('player-bar-guest').style.display = 'none';
+  const pbg2 = document.getElementById('player-bar-guest'); if (pbg2) pbg2.style.display = 'none';
   document.getElementById('room-name-hint').style.display = '';
   document.getElementById('room-name').title = '클릭하여 이름 변경';
   document.getElementById('delete-room-btn').style.display = '';
@@ -100,7 +100,7 @@ socket.on('play-song', ({ song }) => {
   if (roomState) roomState.currentSong = song;
   playYT(song.videoId, 0);
   updatePlayBtn(true);
-  document.getElementById('guest-playing-icon').textContent = '▶';
+  const gIcon = document.getElementById('guest-playing-icon'); if (gIcon) gIcon.textContent = '▶';
   log(`▶ "${song.title}" 재생 중`, 'play');
   highlightCurrentSong(song.id);
   // Reset timeline
@@ -113,15 +113,19 @@ socket.on('play', ({ videoId, time }) => {
   if (ytPlayer && ytReady) {
     if (videoId) ytPlayer.loadVideoById(videoId, time || 0);
     else { ytPlayer.seekTo(time || 0, true); ytPlayer.playVideo(); }
+    if (!isHost) {
+      if (audioUnlocked) { ytPlayer.unMute(); applyVolume(roomState?.volume ?? 80); }
+      else { ytPlayer.mute(); showUnlockBanner(); }
+    }
   }
   updatePlayBtn(true);
-  document.getElementById('guest-playing-icon').textContent = '▶';
+  const gIcon = document.getElementById('guest-playing-icon'); if (gIcon) gIcon.textContent = '▶';
 });
 
 socket.on('pause', ({ time }) => {
   if (ytPlayer && ytReady) { ytPlayer.pauseVideo(); if (time !== undefined) ytPlayer.seekTo(time, true); }
   updatePlayBtn(false);
-  document.getElementById('guest-playing-icon').textContent = '⏸';
+  const gIcon2 = document.getElementById('guest-playing-icon'); if (gIcon2) gIcon2.textContent = '⏸';
 });
 
 socket.on('seek', ({ time }) => { if (ytPlayer && ytReady) ytPlayer.seekTo(time, true); });
@@ -131,7 +135,7 @@ socket.on('stop', () => {
   if (ytPlayer && ytReady) ytPlayer.stopVideo();
   updatePlayBtn(false);
   updateNowPlaying(null);
-  document.getElementById('guest-playing-icon').textContent = '⏸';
+  const gIcon2 = document.getElementById('guest-playing-icon'); if (gIcon2) gIcon2.textContent = '⏸';
   highlightCurrentSong(null);
   log('재생 종료', 'system');
 });
@@ -157,11 +161,13 @@ socket.on('queue-update', queue => {
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player('yt-player', {
     height: '1', width: '1',
-    playerVars: { autoplay: 0, controls: 0 },
+    playerVars: { autoplay: 0, controls: 0, mute: 1 },
     events: {
       onReady: () => {
         ytReady = true;
+        // Muted autoplay is allowed by browsers; we unmute on first user interaction
         if (pendingPlay) { playYT(pendingPlay.videoId, pendingPlay.time); pendingPlay = null; }
+        if (!isHost) showUnlockBanner();
       },
       onStateChange: e => {
         if (e.data === YT.PlayerState.ENDED && isHost) socket.emit('song-ended');
@@ -176,16 +182,64 @@ const ytScript = document.createElement('script');
 ytScript.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(ytScript);
 
+let audioUnlocked = false;
+
 function playYT(videoId, time) {
   if (!ytReady) { pendingPlay = { videoId, time }; return; }
   ytPlayer.loadVideoById({ videoId, startSeconds: time || 0 });
-  if (!isHost) applyVolume(roomState?.volume ?? 80);
+  if (isHost) {
+    ytPlayer.unMute();
+    applyVolume(roomState?.volume ?? 80);
+  } else {
+    // Guests: keep muted until user clicks (browser autoplay policy)
+    if (audioUnlocked) {
+      ytPlayer.unMute();
+      applyVolume(roomState?.volume ?? 80);
+    } else {
+      ytPlayer.mute();
+      showUnlockBanner();
+    }
+  }
+}
+
+function unlockAudio() {
+  audioUnlocked = true;
+  if (ytPlayer && ytReady) {
+    ytPlayer.unMute();
+    applyVolume(roomState?.volume ?? 80);
+    // If something is already playing, resume at correct position
+    if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
+      ytPlayer.playVideo();
+    }
+  }
+  hideUnlockBanner();
+}
+
+function showUnlockBanner() {
+  if (audioUnlocked) return;
+  let banner = document.getElementById('unlock-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'unlock-banner';
+    banner.className = 'unlock-banner';
+    banner.innerHTML = '<span>🔇 소리를 활성화하려면 클릭하세요</span>';
+    banner.addEventListener('click', unlockAudio);
+    document.body.appendChild(banner);
+  }
+  banner.style.display = 'flex';
+}
+
+function hideUnlockBanner() {
+  const banner = document.getElementById('unlock-banner');
+  if (banner) banner.style.display = 'none';
 }
 
 function applyVolume(vol) {
   if (ytPlayer && ytReady) ytPlayer.setVolume(vol);
-  document.getElementById('vol-label').textContent = vol;
-  document.getElementById('volume-slider').value = vol;
+  const volLabel = document.getElementById('vol-label');
+  const volSlider = document.getElementById('volume-slider');
+  if (volLabel) volLabel.textContent = vol;
+  if (volSlider) volSlider.value = vol;
 }
 
 // ── Room name inline edit ─────────────────────────
@@ -350,15 +404,14 @@ function updateRepeatBtn(mode) {
 }
 
 function updateNowPlaying(song) {
-  const setEls = (titleId, subId, artId) => {
-    document.getElementById(titleId).textContent = song ? song.title : '재생 중인 곡 없음';
-    document.getElementById(subId).textContent   = song ? (song.channelTitle || '—') : '—';
-    document.getElementById(artId).innerHTML     = song
-      ? `<img src="https://img.youtube.com/vi/${song.videoId}/default.jpg" alt="" />`
-      : '♪';
+  const setEl = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  const setArt = (id, videoId) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = videoId ? `<img src="https://img.youtube.com/vi/${videoId}/default.jpg" alt="" />` : '♪';
   };
-  setEls('now-playing-title', 'now-playing-sub', 'now-playing-art');
-  setEls('guest-title', 'guest-sub', 'guest-art');
+  setEl('now-playing-title', song ? song.title : '재생 중인 곡 없음');
+  setEl('now-playing-sub',   song ? (song.channelTitle || '—') : '—');
+  setArt('now-playing-art',  song?.videoId);
 
   // Update guest big card
   const bigTitle = document.getElementById('guest-big-title');

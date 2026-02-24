@@ -501,3 +501,19 @@ a { color: var(--accent); text-decoration: none; }
 .song-memo-edit {
   margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem;
 }
+
+/* ── Audio unlock banner (guest autoplay policy) ── */
+.unlock-banner {
+  position: fixed; bottom: 1.8rem; left: 50%; transform: translateX(-50%);
+  z-index: 3000; display: flex; align-items: center; gap: 0.6rem;
+  background: var(--accent); color: #fff;
+  padding: 0.75rem 1.4rem; border-radius: 30px;
+  font-size: 0.88rem; font-weight: 600; cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  animation: banner-pulse 2s ease-in-out infinite;
+}
+.unlock-banner:hover { background: #111; }
+@keyframes banner-pulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  50%       { box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+}
