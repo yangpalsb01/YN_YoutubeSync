@@ -57,13 +57,15 @@ function sanitizeRoom(room) {
 
 // Create room
 app.post('/api/rooms', (req, res) => {
-  const { name } = req.body;
+  const { name, hostNickname } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: '방 이름을 입력해주세요.' });
+  if (!hostNickname || !hostNickname.trim()) return res.status(400).json({ error: '닉네임을 입력해주세요.' });
   const id = uuidv4();
   const code = generateCode();
   rooms[id] = {
     id, name: name.trim(), code,
-    hostSocketId: null,
+    hostNickname: hostNickname.trim(), // 고정 호스트 닉네임
+    hostSocketId: null,                // 현재 접속 중인 호스트 소켓
     playlists: [],
     queue: [],
     currentSong: null,
@@ -108,8 +110,8 @@ io.on('connection', (socket) => {
     socket.roomId = roomId;
     socket.nickname = nickname || 'Guest';
 
-    // First to join becomes host
-    if (!room.hostSocketId) {
+    // 닉네임이 호스트 닉네임과 일치하면 호스트 권한 부여
+    if (nickname && nickname.trim() === room.hostNickname) {
       room.hostSocketId = socket.id;
       socket.isHost = true;
     } else {
@@ -345,17 +347,10 @@ io.on('connection', (socket) => {
     const room = rooms[socket.roomId];
     if (!room) return;
     io.to(socket.roomId).emit('user-left', { nickname: socket.nickname });
-    // Transfer host if needed
+    // 호스트가 나가도 다른 사람에게 권한을 이전하지 않음
+    // 같은 닉네임으로 재접속하면 자동으로 호스트 권한 복구됨
     if (room.hostSocketId === socket.id) {
       room.hostSocketId = null;
-      // Find another socket in the room
-      const clients = io.sockets.adapter.rooms.get(socket.roomId);
-      if (clients && clients.size > 0) {
-        const nextId = [...clients][0];
-        room.hostSocketId = nextId;
-        io.to(nextId).emit('became-host');
-        io.to(socket.roomId).emit('host-changed');
-      }
     }
   });
 });

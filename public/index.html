@@ -101,7 +101,7 @@
       const err = document.getElementById('create-error');
       if (!name) { showError(err, '방 이름을 입력해주세요.'); return; }
       if (!nick) { showError(err, '닉네임을 입력해주세요.'); return; }
-      const res = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      const res = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, hostNickname: nick }) });
       const data = await res.json();
       if (data.error) { showError(err, data.error); return; }
       goToRoom(data.id, nick);

@@ -77,23 +77,11 @@ socket.on('room-renamed', ({ name }) => {
   log(`방 이름이 "${name}"(으)로 변경되었습니다.`, 'system');
 });
 
-socket.on('became-host', () => {
-  isHost = true;
-  document.getElementById('host-badge').style.display = '';
-  document.getElementById('player-bar').style.display = 'flex';
-  const pbg2 = document.getElementById('player-bar-guest'); if (pbg2) pbg2.style.display = 'none';
-  document.getElementById('room-name-hint').style.display = '';
-  document.getElementById('room-name').title = '클릭하여 이름 변경';
-  document.getElementById('delete-room-btn').style.display = '';
-  document.getElementById('sidebar').style.display = '';
-  document.getElementById('chat-section').style.display = '';
-  log('당신이 새 호스트가 되었습니다.', 'system');
-  toast('호스트 권한을 받았습니다!', 'success');
-});
+// became-host: 서버에서 닉네임 기반으로 호스트를 결정하므로 이 이벤트는 사용하지 않음
 
 socket.on('user-joined', ({ nickname }) => log(`${nickname}님이 입장했습니다.`, 'system'));
 socket.on('user-left',   ({ nickname }) => log(`${nickname}님이 퇴장했습니다.`, 'system'));
-socket.on('host-changed', () => log('호스트가 변경되었습니다.', 'system'));
+socket.on('host-changed', () => { /* 호스트 변경 — 게스트 권한 유지 */ });
 
 socket.on('play-song', ({ song }) => {
   updateNowPlaying(song);
