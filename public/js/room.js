@@ -734,3 +734,5 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
 
 // Enter key shortcuts
 document.getElementById('yt-url-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-song-confirm').click(); });
+document.getElementById('custom-title-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-song-confirm').click(); });
+document.getElementById('custom-memo-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-song-confirm').click(); });
