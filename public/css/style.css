@@ -328,8 +328,22 @@ a { color: var(--accent); text-decoration: none; }
 }
 .playlist-drag-handle { color: var(--text-light); cursor: grab; font-size: 1rem; flex-shrink: 0; user-select: none; }
 .playlist-drag-handle:active { cursor: grabbing; }
-.playlist-name { flex: 1; font-size: 0.83rem; font-weight: 600; color: var(--text); }
-.playlist-actions { display: flex; }
+.playlist-name { 
+  flex: 1; 
+  font-size: 0.83rem; 
+  font-weight: 600; 
+  color: var(--text);
+  /* 아래 4줄 추가 */
+  white-space: nowrap;      /* 줄바꿈 방지 */
+  overflow: hidden;         /* 넘치는 부분 숨김 */
+  text-overflow: ellipsis;  /* ... 표시 */
+  min-width: 0;             /* Flex박스 내에서 텍스트가 부모를 뚫고 나가는 현상 방지 */
+}
+
+.playlist-actions { 
+  display: flex; 
+  flex-shrink: 0;           /* 아이콘 영역이 절대로 줄어들거나 밀리지 않게 고정 */
+}
 
 .song-list { padding: 0.15rem; max-height: 280px; overflow-y: auto; }
 
@@ -344,10 +358,24 @@ a { color: var(--accent); text-decoration: none; }
 .song-drag-handle { color: var(--text-light); cursor: grab; font-size: 0.88rem; flex-shrink: 0; user-select: none; }
 .song-drag-handle:active { cursor: grabbing; }
 .song-thumb { width: 36px; height: 27px; border-radius: 3px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }
-.song-info { flex: 1; min-width: 0; }
-.song-title { font-size: 0.78rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.song-info { 
+  flex: 1; 
+  min-width: 0;             /* 이 설정이 있어야 내부의 .song-title 줄임표가 정상 작동합니다 */
+}
+.song-title { 
+  font-size: 0.78rem; 
+  font-weight: 500; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+}
 .song-ch { font-size: 0.68rem; color: var(--text-muted); }
-.song-actions { display: flex; opacity: 0; transition: opacity 0.12s; flex-shrink: 0; }
+.song-actions { 
+  display: flex; 
+  opacity: 0; 
+  transition: opacity 0.12s; 
+  flex-shrink: 0;           /* 아이콘 영역 고정 */
+}
 .song-item:hover .song-actions { opacity: 1; }
 
 /* Queue section */
