@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JukeSync</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="lobby-page">
+
+  <header class="site-header">
+    <div class="logo">
+      <span class="logo-icon">♪</span>
+      <span class="logo-text">JukeSync</span>
+    </div>
+    <p class="tagline">함께 듣는 음악</p>
+  </header>
+
+  <main class="lobby-main">
+    <div class="card-grid">
+
+      <div class="card card--create">
+        <div class="card-icon">🎵</div>
+        <h2 class="card-title">새 방 만들기</h2>
+        <p class="card-desc">방을 생성하고 친구를 초대하세요.<br/>호스트는 모든 재생을 제어합니다.</p>
+        <div class="form-group">
+          <input type="text" id="room-name-input" class="input" placeholder="방 이름 입력..." maxlength="30" />
+          <input type="text" id="host-nickname-input" class="input" placeholder="닉네임 입력..." maxlength="20" />
+          <button class="btn btn--primary" id="create-room-btn">방 만들기</button>
+        </div>
+        <p class="form-error hidden" id="create-error"></p>
+      </div>
+
+      <div class="card card--join">
+        <div class="card-icon">🔑</div>
+        <h2 class="card-title">코드로 입장</h2>
+        <p class="card-desc">초대 코드를 입력해<br/>친구의 방에 참가하세요.</p>
+        <div class="form-group">
+          <input type="text" id="join-code-input" class="input input--code" placeholder="XXXXXX" maxlength="6" />
+          <input type="text" id="join-nickname-input" class="input" placeholder="닉네임 입력..." maxlength="20" />
+          <button class="btn btn--secondary" id="join-code-btn">입장하기</button>
+        </div>
+        <p class="form-error hidden" id="join-error"></p>
+      </div>
+
+    </div>
+
+    <section class="room-list-section">
+      <h3 class="section-title">열린 방 목록</h3>
+      <div id="room-list" class="room-list">
+        <p class="empty-hint">아직 열린 방이 없습니다.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal hidden" id="join-modal">
+    <div class="modal-box">
+      <h3 id="join-modal-title">방 입장</h3>
+      <input type="text" id="join-modal-nickname" class="input" placeholder="닉네임 입력..." maxlength="20" />
+      <div class="modal-actions">
+        <button class="btn btn--primary" id="join-modal-confirm">입장</button>
+        <button class="btn btn--ghost" id="join-modal-cancel">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let pendingRoomId = null;
+
+    async function loadRooms() {
+      const res = await fetch('/api/rooms');
+      const rooms = await res.json();
+      const list = document.getElementById('room-list');
+      if (rooms.length === 0) { list.innerHTML = '<p class="empty-hint">아직 열린 방이 없습니다.</p>'; return; }
+      list.innerHTML = rooms.map(r => `
+        <div class="room-item" data-id="${r.id}">
+          <span class="room-item-name">${esc(r.name)}</span>
+          <span class="room-item-code">${r.code}</span>
+          <button class="btn btn--sm btn--secondary" onclick="openJoinModal('${r.id}', '${esc(r.name)}')">입장</button>
+        </div>
+      `).join('');
+    }
+
+    function openJoinModal(id, name) {
+      pendingRoomId = id;
+      document.getElementById('join-modal-title').textContent = `"${name}" 입장`;
+      document.getElementById('join-modal').classList.remove('hidden');
+      document.getElementById('join-modal-nickname').focus();
+    }
+
+    document.getElementById('join-modal-confirm').onclick = () => {
+      const nick = document.getElementById('join-modal-nickname').value.trim();
+      if (!nick) { alert('닉네임을 입력해주세요.'); return; }
+      goToRoom(pendingRoomId, nick);
+    };
+    document.getElementById('join-modal-cancel').onclick = () => document.getElementById('join-modal').classList.add('hidden');
+
+    document.getElementById('create-room-btn').onclick = async () => {
+      const name = document.getElementById('room-name-input').value.trim();
+      const nick = document.getElementById('host-nickname-input').value.trim();
+      const err = document.getElementById('create-error');
+      if (!name) { showError(err, '방 이름을 입력해주세요.'); return; }
+      if (!nick) { showError(err, '닉네임을 입력해주세요.'); return; }
+      const res = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      const data = await res.json();
+      if (data.error) { showError(err, data.error); return; }
+      goToRoom(data.id, nick);
+    };
+
+    document.getElementById('join-code-btn').onclick = async () => {
+      const code = document.getElementById('join-code-input').value.trim();
+      const nick = document.getElementById('join-nickname-input').value.trim();
+      const err = document.getElementById('join-error');
+      if (!code) { showError(err, '입장 코드를 입력해주세요.'); return; }
+      if (!nick) { showError(err, '닉네임을 입력해주세요.'); return; }
+      const res = await fetch(`/api/rooms/code/${code}`);
+      const data = await res.json();
+      if (data.error) { showError(err, data.error); return; }
+      goToRoom(data.id, nick);
+    };
+
+    function goToRoom(id, nick) { sessionStorage.setItem('nickname', nick); window.location.href = `/room.html?id=${id}`; }
+    function showError(el, msg) { el.textContent = msg; el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000); }
+    function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    document.getElementById('room-name-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('host-nickname-input').focus());
+    document.getElementById('host-nickname-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('create-room-btn').click());
+    document.getElementById('join-code-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('join-nickname-input').focus());
+    document.getElementById('join-nickname-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('join-code-btn').click());
+    document.getElementById('join-modal-nickname').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('join-modal-confirm').click());
+    document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); }));
+
+    loadRooms();
+    setInterval(loadRooms, 5000);
+  </script>
+</body>
+</html>
