@@ -18,6 +18,7 @@ let pendingPlay = null;
 let addSongTargetPlaylistId = null; // null = standalone queue
 let moveSongData = null;
 let dragSource   = null;
+const collapsedPlaylists = new Set(); // tracks collapsed playlist ids
 
 if (!ROOM_ID) window.location.href = '/';
 
@@ -340,16 +341,6 @@ function updateShuffleBtn(on) {
   const btn = document.getElementById('btn-shuffle');
   btn.classList.toggle('active', on);
   btn.title = on ? '셔플 켜짐 (클릭해서 끄기)' : '셔플 (클릭해서 켜기)';
-  btn.textContent = on ? '⇄' : '⇄';
-  // Show/hide shuffle indicator dot
-  let dot = document.getElementById('shuffle-dot');
-  if (!dot) {
-    dot = document.createElement('span');
-    dot.id = 'shuffle-dot';
-    dot.className = 'ctrl-indicator';
-    btn.parentElement.insertBefore(dot, btn.nextSibling);
-  }
-  dot.style.display = on ? '' : 'none';
 }
 function updateRepeatBtn(mode) {
   const btn = document.getElementById('btn-repeat');
@@ -397,9 +388,11 @@ function renderPlaylists(playlists) {
     section.className = 'playlist-section';
     section.dataset.id = pl.id;
     section.dataset.idx = plIdx;
+    const isCollapsed = collapsedPlaylists.has(pl.id);
     section.innerHTML = `
       <div class="playlist-header">
         <div class="playlist-drag-handle" title="드래그해서 순서 변경">⠿</div>
+        <button class="playlist-collapse-btn js-collapse${isCollapsed ? ' collapsed' : ''}" title="${isCollapsed ? '펼치기' : '접기'}">▼</button>
         <span class="playlist-name">${esc(pl.name)}</span>
         <div class="playlist-actions">
           <button class="btn btn--icon js-add-song" title="곡 추가">＋</button>
@@ -407,12 +400,27 @@ function renderPlaylists(playlists) {
           <button class="btn btn--icon btn--del js-del-pl" title="삭제">✕</button>
         </div>
       </div>
-      <div class="song-list" id="songs-${pl.id}"></div>
+      <div class="song-list" id="songs-${pl.id}" style="${isCollapsed ? 'display:none' : ''}"></div>
     `;
-    // Attach event listeners (safe - no JSON in HTML)
+    // Attach event listeners
     section.querySelector('.js-add-song').addEventListener('click', () => openAddSong(pl.id));
     if (isHost) section.querySelector('.js-play-pl').addEventListener('click', () => playPlaylist(pl.id));
     section.querySelector('.js-del-pl').addEventListener('click', () => deletePlaylist(pl.id));
+    section.querySelector('.js-collapse').addEventListener('click', () => {
+      const songList = document.getElementById('songs-' + pl.id);
+      const btn = section.querySelector('.js-collapse');
+      if (collapsedPlaylists.has(pl.id)) {
+        collapsedPlaylists.delete(pl.id);
+        songList.style.display = '';
+        btn.classList.remove('collapsed');
+        btn.title = '접기';
+      } else {
+        collapsedPlaylists.add(pl.id);
+        songList.style.display = 'none';
+        btn.classList.add('collapsed');
+        btn.title = '펼치기';
+      }
+    });
 
     el.appendChild(section);
     renderSongs(pl.songs, pl.id, `songs-${pl.id}`);
@@ -444,6 +452,7 @@ function renderSongs(songs, playlistId, containerId) {
       <div class="song-info">
         <p class="song-title">${esc(song.title)}</p>
         <p class="song-ch">${esc(song.channelTitle || '')}</p>
+        ${song.memo ? `<p class="song-memo">${esc(song.memo)}</p>` : ''}
       </div>
       <div class="song-actions">
         ${isHost ? `<button class="btn btn--icon btn--play-song js-play-song" title="재생">▶</button>` : ''}
@@ -500,6 +509,7 @@ function openAddSong(playlistId) {
   document.getElementById('add-song-modal-title').textContent = pl ? `곡 추가 — ${pl.name}` : '곡 추가 — 개별 대기열';
   document.getElementById('yt-url-input').value = '';
   document.getElementById('custom-title-input').value = '';
+  document.getElementById('custom-memo-input').value = '';
   document.getElementById('song-title-wrap').classList.add('hidden');
   document.getElementById('add-song-preview').classList.add('hidden');
   document.getElementById('add-song-modal').classList.remove('hidden');
@@ -545,8 +555,9 @@ document.getElementById('add-song-confirm').onclick = async () => {
   const customInput = document.getElementById('custom-title-input');
   const title = customInput.value.trim() || '(제목 없음)';
   const channelTitle = customInput._ytChannel || '';
+  const memo = document.getElementById('custom-memo-input').value.trim();
 
-  socket.emit('add-song', { playlistId: addSongTargetPlaylistId, song: { videoId, title, channelTitle } });
+  socket.emit('add-song', { playlistId: addSongTargetPlaylistId, song: { videoId, title, channelTitle, memo } });
   document.getElementById('add-song-modal').classList.add('hidden');
   toast(`"${title}" 추가됨`, 'success');
 };

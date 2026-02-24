@@ -474,18 +474,30 @@ a { color: var(--accent); text-decoration: none; }
   grid-template-columns: 1fr;
 }
 
-/* ── Shuffle / Repeat active state — 더 뚜렷하게 ── */
+/* ── Shuffle / Repeat active state ── */
 .ctrl-btn.active {
   color: var(--accent) !important;
-  background: rgba(43,43,43,0.1) !important;
-  border-radius: 6px;
   font-weight: 700;
 }
 
-/* Shuffle active indicator dot */
-.ctrl-indicator {
-  display: inline-block; width: 5px; height: 5px;
-  border-radius: 50%; background: var(--accent);
-  position: relative; top: -8px; left: -6px;
-  margin-right: -5px;
+/* Playlist collapse toggle */
+.playlist-collapse-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 0.7rem; padding: 0 0.2rem;
+  transition: transform 0.2s, color 0.15s; line-height: 1;
+  flex-shrink: 0;
+}
+.playlist-collapse-btn:hover { color: var(--accent); }
+.playlist-collapse-btn.collapsed { transform: rotate(-90deg); }
+
+/* Song memo */
+.song-memo {
+  font-size: 0.67rem; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px; font-style: italic;
+}
+
+/* Memo field in add-song modal */
+.song-memo-edit {
+  margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem;
 }

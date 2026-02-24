@@ -134,8 +134,12 @@
       <p class="form-hint">예: https://www.youtube.com/watch?v=...</p>
       <div id="add-song-preview" class="song-preview hidden"></div>
       <div id="song-title-wrap" class="song-title-edit hidden">
-        <label class="field-label">곡 이름 <span style="color:var(--text-light);font-weight:400;">(선택 — 비우면 유튜브 제목 사용)</span></label>
-        <input type="text" id="custom-title-input" class="input" placeholder="곡 이름을 직접 입력하세요..." maxlength="100" />
+        <label class="field-label">곡 이름</label>
+        <input type="text" id="custom-title-input" class="input" placeholder="곡 이름..." maxlength="100" />
+        <div class="song-memo-edit">
+          <label class="field-label">메모 <span style="color:var(--text-light);font-weight:400;">(선택)</span></label>
+          <input type="text" id="custom-memo-input" class="input" placeholder="짧은 메모를 입력하세요..." maxlength="80" />
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn btn--primary" id="add-song-confirm">추가</button>

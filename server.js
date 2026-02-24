@@ -368,7 +368,12 @@ function getNextSong(room) {
   if (allSongs.length === 0) return null;
 
   if (room.shuffle) {
-    return allSongs[Math.floor(Math.random() * allSongs.length)];
+    if (allSongs.length === 1) return allSongs[0];
+    // Exclude current song to avoid consecutive repeat
+    const candidates = room.currentSong
+      ? allSongs.filter(s => s.id !== room.currentSong.id)
+      : allSongs;
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
   if (!room.currentSong) return allSongs[0];
