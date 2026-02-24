@@ -363,3 +363,9 @@ a { color: var(--accent); text-decoration: none; }
 .toast.visible { opacity: 1; transform: translateY(0); }
 .toast--success { border-color: #a8d4ae; color: var(--success); }
 .toast--error { border-color: #e0b0b0; color: var(--error); }
+
+/* Danger button */
+.btn--danger {
+  background: transparent; color: var(--error); border-color: #e0b0b0;
+}
+.btn--danger:hover { background: #fdf0f0; border-color: var(--error); }

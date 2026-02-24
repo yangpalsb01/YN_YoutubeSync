@@ -251,6 +251,20 @@ io.on('connection', (socket) => {
     io.to(socket.roomId).emit('room-renamed', { name: room.name });
   }));
 
+
+  // Delete room (host only)
+  socket.on('delete-room', () => hostAction(room => {
+    const roomId = socket.roomId;
+    io.to(roomId).emit('room-deleted');
+    const clients = io.sockets.adapter.rooms.get(roomId);
+    if (clients) {
+      [...clients].forEach(clientId => {
+        const s = io.sockets.sockets.get(clientId);
+        if (s) s.leave(roomId);
+      });
+    }
+    delete rooms[roomId];
+  }));
   // Add song (to playlist or standalone queue)
   socket.on('add-song', ({ playlistId, song }) => {
     const room = rooms[socket.roomId];

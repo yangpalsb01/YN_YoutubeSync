@@ -40,9 +40,9 @@ socket.on('room-state', state => {
     document.getElementById('host-badge').style.display = '';
     document.getElementById('player-bar').style.display = 'flex';
     document.getElementById('player-bar-guest').style.display = 'none';
-    // Show hint for editable name
     document.getElementById('room-name-hint').style.display = '';
     document.getElementById('room-name').title = '클릭하여 이름 변경';
+    document.getElementById('delete-room-btn').style.display = '';
   } else {
     document.getElementById('player-bar').style.display = 'none';
     document.getElementById('player-bar-guest').style.display = 'flex';
@@ -77,6 +77,7 @@ socket.on('became-host', () => {
   document.getElementById('player-bar-guest').style.display = 'none';
   document.getElementById('room-name-hint').style.display = '';
   document.getElementById('room-name').title = '클릭하여 이름 변경';
+  document.getElementById('delete-room-btn').style.display = '';
   log('당신이 새 호스트가 되었습니다.', 'system');
   toast('호스트 권한을 받았습니다!', 'success');
 });
@@ -313,19 +314,23 @@ function renderPlaylists(playlists) {
         <div class="playlist-drag-handle" title="드래그해서 순서 변경">⠿</div>
         <span class="playlist-name">${esc(pl.name)}</span>
         <div class="playlist-actions">
-          <button class="btn btn--icon" title="곡 추가" onclick="openAddSong('${pl.id}')">＋</button>
-          ${isHost ? `<button class="btn btn--icon btn--play-pl" title="첫 곡 재생" onclick="playPlaylist('${pl.id}')">▶</button>` : ''}
-          <button class="btn btn--icon btn--del" title="삭제" onclick="deletePlaylist('${pl.id}')">✕</button>
+          <button class="btn btn--icon js-add-song" title="곡 추가">＋</button>
+          ${isHost ? '<button class="btn btn--icon btn--play-pl js-play-pl" title="첫 곡 재생">▶</button>' : ''}
+          <button class="btn btn--icon btn--del js-del-pl" title="삭제">✕</button>
         </div>
       </div>
       <div class="song-list" id="songs-${pl.id}"></div>
     `;
+    // Attach event listeners (safe - no JSON in HTML)
+    section.querySelector('.js-add-song').addEventListener('click', () => openAddSong(pl.id));
+    if (isHost) section.querySelector('.js-play-pl').addEventListener('click', () => playPlaylist(pl.id));
+    section.querySelector('.js-del-pl').addEventListener('click', () => deletePlaylist(pl.id));
+
     el.appendChild(section);
     renderSongs(pl.songs, pl.id, `songs-${pl.id}`);
     setupPlaylistDrag(section, plIdx);
   });
 
-  // Highlight current song after re-render
   const cur = roomState?.currentSong?.id;
   if (cur) highlightCurrentSong(cur);
 }
@@ -344,6 +349,7 @@ function renderSongs(songs, playlistId, containerId) {
     item.dataset.id  = song.id;
     item.dataset.idx = idx;
     item.draggable   = true;
+
     item.innerHTML = `
       <div class="song-drag-handle">⠿</div>
       <img class="song-thumb" src="https://img.youtube.com/vi/${song.videoId}/default.jpg" alt="" loading="lazy" />
@@ -352,11 +358,28 @@ function renderSongs(songs, playlistId, containerId) {
         <p class="song-ch">${esc(song.channelTitle || '')}</p>
       </div>
       <div class="song-actions">
-        ${isHost ? `<button class="btn btn--icon btn--play-song" title="재생" onclick="playSong(${JSON.stringify(JSON.stringify(song))})">▶</button>` : ''}
-        <button class="btn btn--icon" title="이동" onclick="openMoveSong('${song.id}','${playlistId || ''}')">⇄</button>
-        <button class="btn btn--icon btn--del" title="삭제" onclick="removeSong('${song.id}','${playlistId || ''}')">✕</button>
+        ${isHost ? `<button class="btn btn--icon btn--play-song js-play-song" title="재생">▶</button>` : ''}
+        <button class="btn btn--icon js-move-song" title="이동">⇄</button>
+        <button class="btn btn--icon btn--del js-remove-song" title="삭제">✕</button>
       </div>
     `;
+
+    // ★ Use event listeners with closure — no JSON in HTML attributes
+    if (isHost) {
+      item.querySelector('.js-play-song').addEventListener('click', (e) => {
+        e.stopPropagation();
+        socket.emit('play-song', { song });
+      });
+    }
+    item.querySelector('.js-move-song').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openMoveSong(song.id, playlistId || '');
+    });
+    item.querySelector('.js-remove-song').addEventListener('click', (e) => {
+      e.stopPropagation();
+      socket.emit('remove-song', { playlistId: playlistId || null, songId: song.id });
+    });
+
     setupSongDrag(item, idx, playlistId);
     el.appendChild(item);
   });
@@ -366,11 +389,6 @@ function renderQueue(queue) {
   renderSongs(queue, null, 'queue-list');
   const cur = roomState?.currentSong?.id;
   if (cur) highlightCurrentSong(cur);
-}
-
-function playSong(songJsonStr) {
-  if (!isHost) return;
-  socket.emit('play-song', { song: JSON.parse(songJsonStr) });
 }
 
 function playPlaylist(playlistId) {
@@ -502,9 +520,20 @@ function setupSongDrag(item, idx, playlistId) {
   });
 }
 
-// ── Copy buttons ──────────────────────────────────
+// ── Copy buttons & Room controls ──────────────────
 document.getElementById('copy-code').onclick = () => navigator.clipboard.writeText(document.getElementById('room-code').textContent).then(() => toast('코드 복사됨!', 'success'));
 document.getElementById('copy-link-btn').onclick = () => navigator.clipboard.writeText(window.location.href).then(() => toast('링크 복사됨!', 'success'));
+
+document.getElementById('delete-room-btn').onclick = () => {
+  if (!isHost) return;
+  if (!confirm('방을 삭제하면 모든 참가자가 퇴장됩니다. 계속할까요?')) return;
+  socket.emit('delete-room');
+};
+
+socket.on('room-deleted', () => {
+  alert('방이 삭제되었습니다.');
+  window.location.href = '/';
+});
 
 // ── Activity log ──────────────────────────────────
 function log(msg, type = 'system') {
