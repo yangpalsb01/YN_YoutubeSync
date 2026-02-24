@@ -331,7 +331,7 @@ a { color: var(--accent); text-decoration: none; }
 .playlist-name { flex: 1; font-size: 0.83rem; font-weight: 600; color: var(--text); }
 .playlist-actions { display: flex; }
 
-.song-list { padding: 0.15rem; }
+.song-list { padding: 0.15rem; max-height: 280px; overflow-y: auto; }
 
 .song-item {
   display: flex; align-items: center; gap: 0.45rem;
