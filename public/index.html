@@ -178,8 +178,8 @@
       if (e.key === 'Enter') document.getElementById('force-delete-confirm').click();
     });
 
-    loadRooms();
-    setInterval(loadRooms, 5000);
-  </script>
+   loadRooms();
+    // 5초(5000)에서 2초(2000)로 변경하여 더 빠르게 반영되도록 함
+    setInterval(loadRooms, 2000);
 </body>
 </html>
