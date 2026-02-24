@@ -3,15 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JukeSync — 함께 듣는 음악</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <title>JukeSync</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body class="lobby-page">
-
-  <div class="noise"></div>
 
   <header class="site-header">
     <div class="logo">
@@ -24,7 +19,6 @@
   <main class="lobby-main">
     <div class="card-grid">
 
-      <!-- Create Room -->
       <div class="card card--create">
         <div class="card-icon">🎵</div>
         <h2 class="card-title">새 방 만들기</h2>
@@ -37,7 +31,6 @@
         <p class="form-error hidden" id="create-error"></p>
       </div>
 
-      <!-- Join by Code -->
       <div class="card card--join">
         <div class="card-icon">🔑</div>
         <h2 class="card-title">코드로 입장</h2>
@@ -52,7 +45,6 @@
 
     </div>
 
-    <!-- Room list -->
     <section class="room-list-section">
       <h3 class="section-title">열린 방 목록</h3>
       <div id="room-list" class="room-list">
@@ -61,7 +53,6 @@
     </section>
   </main>
 
-  <!-- Join from list modal -->
   <div class="modal hidden" id="join-modal">
     <div class="modal-box">
       <h3 id="join-modal-title">방 입장</h3>
@@ -80,15 +71,12 @@
       const res = await fetch('/api/rooms');
       const rooms = await res.json();
       const list = document.getElementById('room-list');
-      if (rooms.length === 0) {
-        list.innerHTML = '<p class="empty-hint">아직 열린 방이 없습니다.</p>';
-        return;
-      }
+      if (rooms.length === 0) { list.innerHTML = '<p class="empty-hint">아직 열린 방이 없습니다.</p>'; return; }
       list.innerHTML = rooms.map(r => `
         <div class="room-item" data-id="${r.id}">
           <span class="room-item-name">${esc(r.name)}</span>
           <span class="room-item-code">${r.code}</span>
-          <button class="btn btn--sm" onclick="openJoinModal('${r.id}', '${esc(r.name)}')">입장</button>
+          <button class="btn btn--sm btn--secondary" onclick="openJoinModal('${r.id}', '${esc(r.name)}')">입장</button>
         </div>
       `).join('');
     }
@@ -105,9 +93,7 @@
       if (!nick) { alert('닉네임을 입력해주세요.'); return; }
       goToRoom(pendingRoomId, nick);
     };
-    document.getElementById('join-modal-cancel').onclick = () => {
-      document.getElementById('join-modal').classList.add('hidden');
-    };
+    document.getElementById('join-modal-cancel').onclick = () => document.getElementById('join-modal').classList.add('hidden');
 
     document.getElementById('create-room-btn').onclick = async () => {
       const name = document.getElementById('room-name-input').value.trim();
@@ -115,11 +101,7 @@
       const err = document.getElementById('create-error');
       if (!name) { showError(err, '방 이름을 입력해주세요.'); return; }
       if (!nick) { showError(err, '닉네임을 입력해주세요.'); return; }
-      const res = await fetch('/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      });
+      const res = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
       const data = await res.json();
       if (data.error) { showError(err, data.error); return; }
       goToRoom(data.id, nick);
@@ -137,27 +119,16 @@
       goToRoom(data.id, nick);
     };
 
-    function goToRoom(id, nick) {
-      sessionStorage.setItem('nickname', nick);
-      window.location.href = `/room.html?id=${id}`;
-    }
+    function goToRoom(id, nick) { sessionStorage.setItem('nickname', nick); window.location.href = `/room.html?id=${id}`; }
+    function showError(el, msg) { el.textContent = msg; el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000); }
+    function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-    function showError(el, msg) {
-      el.textContent = msg;
-      el.classList.remove('hidden');
-      setTimeout(() => el.classList.add('hidden'), 3000);
-    }
-
-    function esc(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    // Enter key support
     document.getElementById('room-name-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('host-nickname-input').focus());
     document.getElementById('host-nickname-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('create-room-btn').click());
     document.getElementById('join-code-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('join-nickname-input').focus());
     document.getElementById('join-nickname-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('join-code-btn').click());
     document.getElementById('join-modal-nickname').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('join-modal-confirm').click());
+    document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); }));
 
     loadRooms();
     setInterval(loadRooms, 5000);

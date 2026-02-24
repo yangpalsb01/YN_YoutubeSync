@@ -1,82 +1,105 @@
 // ─────────────────────────────────────────────────
-// JukeSync — room.js
+// JukeSync — room.js  (v2)
+// Changes:
+//  1. Room rename (host only, click room name)
+//  2. Add song → adds to list only, no auto-play
+//  3. Light neutral theme support
 // ─────────────────────────────────────────────────
 
-const params = new URLSearchParams(window.location.search);
-const ROOM_ID = params.get('id');
+const params   = new URLSearchParams(window.location.search);
+const ROOM_ID  = params.get('id');
 const NICKNAME = sessionStorage.getItem('nickname') || 'Guest';
-let isHost = false;
-let roomState = null;
-let ytPlayer = null;
-let ytReady = false;
-let pendingPlay = null; // { videoId, time }
-let addSongTargetPlaylistId = null; // null = queue
-let moveSongData = null; // { songId, fromPlaylistId }
-let dragSource = null;
+
+let isHost      = false;
+let roomState   = null;
+let ytPlayer    = null;
+let ytReady     = false;
+let pendingPlay = null;
+let addSongTargetPlaylistId = null; // null = standalone queue
+let moveSongData = null;
+let dragSource   = null;
 
 if (!ROOM_ID) window.location.href = '/';
 
-// ── Socket setup ──────────────────────────────────
+// ── Socket ────────────────────────────────────────
 const socket = io();
 
-socket.on('connect', () => {
-  socket.emit('join-room', { roomId: ROOM_ID, nickname: NICKNAME });
-});
-
+socket.on('connect', () => socket.emit('join-room', { roomId: ROOM_ID, nickname: NICKNAME }));
 socket.on('error', msg => toast(msg, 'error'));
 
 socket.on('room-state', state => {
   roomState = state;
-  isHost = state.isHost;
+  isHost    = state.isHost;
+
   document.getElementById('room-name').textContent = state.name;
   document.getElementById('room-code').textContent = state.code;
   document.getElementById('my-nickname').textContent = NICKNAME;
+  document.title = `${state.name} — JukeSync`;
+
   if (isHost) {
     document.getElementById('host-badge').style.display = '';
-    document.getElementById('player-bar').classList.remove('hidden');
-    document.getElementById('player-bar-guest').classList.add('hidden');
+    document.getElementById('player-bar').style.display = 'flex';
+    document.getElementById('player-bar-guest').style.display = 'none';
+    // Show hint for editable name
+    document.getElementById('room-name-hint').style.display = '';
+    document.getElementById('room-name').title = '클릭하여 이름 변경';
   } else {
-    document.getElementById('player-bar').classList.add('hidden');
-    document.getElementById('player-bar-guest').classList.remove('hidden');
+    document.getElementById('player-bar').style.display = 'none';
+    document.getElementById('player-bar-guest').style.display = 'flex';
+    document.getElementById('room-name').style.cursor = 'default';
+    document.getElementById('room-name').title = '';
   }
+
   applyVolume(state.volume);
   document.getElementById('volume-slider').value = state.volume;
-  document.getElementById('vol-label').textContent = state.volume;
   updateShuffleBtn(state.shuffle);
   updateRepeatBtn(state.repeat);
   renderPlaylists(state.playlists);
   renderQueue(state.queue);
   if (state.currentSong) {
     updateNowPlaying(state.currentSong);
-    if (state.isPlaying) {
-      schedulePlay(state.currentSong.videoId, state.currentTime + (Date.now() - 0) / 1000);
-    }
+    if (state.isPlaying) playYT(state.currentSong.videoId, state.currentTime);
   }
-  log(`🎵 "${state.name}" 방에 입장했습니다. 코드: ${state.code}`, 'system');
+  log(`"${state.name}" 방에 입장했습니다. 코드: ${state.code}`, 'system');
+});
+
+socket.on('room-renamed', ({ name }) => {
+  if (roomState) roomState.name = name;
+  document.getElementById('room-name').textContent = name;
+  document.title = `${name} — JukeSync`;
+  log(`방 이름이 "${name}"(으)로 변경되었습니다.`, 'system');
 });
 
 socket.on('became-host', () => {
   isHost = true;
   document.getElementById('host-badge').style.display = '';
-  document.getElementById('player-bar').classList.remove('hidden');
-  document.getElementById('player-bar-guest').classList.add('hidden');
-  log('🎛 당신이 새로운 호스트가 되었습니다.', 'system');
+  document.getElementById('player-bar').style.display = 'flex';
+  document.getElementById('player-bar-guest').style.display = 'none';
+  document.getElementById('room-name-hint').style.display = '';
+  document.getElementById('room-name').title = '클릭하여 이름 변경';
+  log('당신이 새 호스트가 되었습니다.', 'system');
   toast('호스트 권한을 받았습니다!', 'success');
 });
 
-socket.on('user-joined', ({ nickname }) => log(`👋 ${nickname}님이 입장했습니다.`, 'system'));
-socket.on('user-left', ({ nickname }) => log(`👋 ${nickname}님이 퇴장했습니다.`, 'system'));
-socket.on('host-changed', () => log('🎛 호스트가 변경되었습니다.', 'system'));
+socket.on('user-joined', ({ nickname }) => log(`${nickname}님이 입장했습니다.`, 'system'));
+socket.on('user-left',   ({ nickname }) => log(`${nickname}님이 퇴장했습니다.`, 'system'));
+socket.on('host-changed', () => log('호스트가 변경되었습니다.', 'system'));
 
 socket.on('play-song', ({ song }) => {
   updateNowPlaying(song);
   if (roomState) roomState.currentSong = song;
   playYT(song.videoId, 0);
+  updatePlayBtn(true);
+  document.getElementById('guest-playing-icon').textContent = '▶';
   log(`▶ "${song.title}" 재생 중`, 'play');
+  highlightCurrentSong(song.id);
 });
 
 socket.on('play', ({ videoId, time }) => {
-  if (ytPlayer && ytReady) { if (videoId) ytPlayer.loadVideoById(videoId, time || 0); else ytPlayer.seekTo(time || 0, true), ytPlayer.playVideo(); }
+  if (ytPlayer && ytReady) {
+    if (videoId) ytPlayer.loadVideoById(videoId, time || 0);
+    else { ytPlayer.seekTo(time || 0, true); ytPlayer.playVideo(); }
+  }
   updatePlayBtn(true);
   document.getElementById('guest-playing-icon').textContent = '▶';
 });
@@ -87,32 +110,31 @@ socket.on('pause', ({ time }) => {
   document.getElementById('guest-playing-icon').textContent = '⏸';
 });
 
-socket.on('seek', ({ time }) => {
-  if (ytPlayer && ytReady) ytPlayer.seekTo(time, true);
-});
-
+socket.on('seek', ({ time }) => { if (ytPlayer && ytReady) ytPlayer.seekTo(time, true); });
 socket.on('volume', ({ volume }) => applyVolume(volume));
 
 socket.on('stop', () => {
   if (ytPlayer && ytReady) ytPlayer.stopVideo();
   updatePlayBtn(false);
   updateNowPlaying(null);
-  log('⏹ 재생 종료', 'system');
+  document.getElementById('guest-playing-icon').textContent = '⏸';
+  highlightCurrentSong(null);
+  log('재생 종료', 'system');
 });
 
-socket.on('state-update', (patch) => {
+socket.on('state-update', patch => {
   if (!roomState) return;
   Object.assign(roomState, patch);
   if (patch.shuffle !== undefined) updateShuffleBtn(patch.shuffle);
-  if (patch.repeat !== undefined) updateRepeatBtn(patch.repeat);
+  if (patch.repeat  !== undefined) updateRepeatBtn(patch.repeat);
 });
 
-socket.on('playlists-update', (playlists) => {
+socket.on('playlists-update', playlists => {
   if (roomState) roomState.playlists = playlists;
   renderPlaylists(playlists);
 });
 
-socket.on('queue-update', (queue) => {
+socket.on('queue-update', queue => {
   if (roomState) roomState.queue = queue;
   renderQueue(queue);
 });
@@ -127,10 +149,10 @@ window.onYouTubeIframeAPIReady = function () {
         ytReady = true;
         if (pendingPlay) { playYT(pendingPlay.videoId, pendingPlay.time); pendingPlay = null; }
       },
-      onStateChange: (e) => {
+      onStateChange: e => {
         if (e.data === YT.PlayerState.ENDED && isHost) socket.emit('song-ended');
         if (e.data === YT.PlayerState.PLAYING) updatePlayBtn(true);
-        if (e.data === YT.PlayerState.PAUSED) updatePlayBtn(false);
+        if (e.data === YT.PlayerState.PAUSED)  updatePlayBtn(false);
       }
     }
   });
@@ -146,43 +168,100 @@ function playYT(videoId, time) {
   if (!isHost) applyVolume(roomState?.volume ?? 80);
 }
 
-function schedulePlay(videoId, time) {
-  playYT(videoId, time);
-}
-
 function applyVolume(vol) {
   if (ytPlayer && ytReady) ytPlayer.setVolume(vol);
   document.getElementById('vol-label').textContent = vol;
   document.getElementById('volume-slider').value = vol;
 }
 
+// ── Room name inline edit ─────────────────────────
+const roomNameEl = document.getElementById('room-name');
+
+roomNameEl.addEventListener('click', () => {
+  if (!isHost) return;
+  const current = roomNameEl.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'room-name-input';
+  input.value = current;
+  input.maxLength = 30;
+  roomNameEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  function commit() {
+    const newName = input.value.trim();
+    const span = document.createElement('span');
+    span.id = 'room-name';
+    span.className = 'room-name';
+    span.title = '클릭하여 이름 변경';
+    span.textContent = newName || current;
+    input.replaceWith(span);
+    // Re-attach click listener
+    span.addEventListener('click', roomNameEl._clickHandler || (() => {}));
+    // Rebind
+    bindRoomNameClick(span);
+    if (newName && newName !== current) socket.emit('rename-room', { name: newName });
+  }
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { input.blur(); }
+    if (e.key === 'Escape') { input.value = current; input.blur(); }
+  });
+});
+
+function bindRoomNameClick(el) {
+  el.addEventListener('click', function handler() {
+    if (!isHost) return;
+    const current = el.textContent;
+    const input = document.createElement('input');
+    input.type = 'text'; input.className = 'room-name-input';
+    input.value = current; input.maxLength = 30;
+    el.replaceWith(input);
+    input.focus(); input.select();
+    function commit() {
+      const newName = input.value.trim();
+      const span = document.createElement('span');
+      span.id = 'room-name'; span.className = 'room-name';
+      span.title = '클릭하여 이름 변경';
+      span.textContent = newName || current;
+      input.replaceWith(span);
+      bindRoomNameClick(span);
+      if (newName && newName !== current) socket.emit('rename-room', { name: newName });
+    }
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') input.blur();
+      if (e.key === 'Escape') { input.value = current; input.blur(); }
+    });
+  });
+}
+
+// Also bind the initial element that was clicked
+bindRoomNameClick(roomNameEl);
+
 // ── Host Controls ─────────────────────────────────
 document.getElementById('btn-playpause').onclick = () => {
   if (!isHost) return;
   const playing = ytPlayer && ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
-  if (playing) {
-    const t = ytPlayer.getCurrentTime();
-    socket.emit('pause', { time: t });
-  } else {
-    const t = ytPlayer && ytReady ? ytPlayer.getCurrentTime() : 0;
-    socket.emit('play', { time: t });
-  }
+  const t = ytPlayer && ytReady ? ytPlayer.getCurrentTime() : 0;
+  if (playing) socket.emit('pause', { time: t });
+  else socket.emit('play', { time: t });
 };
 
 document.getElementById('btn-next').onclick = () => isHost && socket.emit('next-song');
 document.getElementById('btn-prev').onclick = () => {
   if (!isHost) return;
-  if (ytPlayer && ytReady && ytPlayer.getCurrentTime() > 5) {
-    socket.emit('seek', { time: 0 });
-  } else {
-    socket.emit('next-song');
-  }
+  const t = ytPlayer && ytReady ? ytPlayer.getCurrentTime() : 0;
+  if (t > 5) socket.emit('seek', { time: 0 });
+  else socket.emit('next-song');
 };
 
 document.getElementById('btn-shuffle').onclick = () => isHost && socket.emit('toggle-shuffle');
-document.getElementById('btn-repeat').onclick = () => isHost && socket.emit('toggle-repeat');
+document.getElementById('btn-repeat').onclick  = () => isHost && socket.emit('toggle-repeat');
 
-document.getElementById('volume-slider').oninput = (e) => {
+document.getElementById('volume-slider').oninput = e => {
   if (!isHost) return;
   socket.emit('volume', { volume: parseInt(e.target.value) });
   applyVolume(parseInt(e.target.value));
@@ -191,11 +270,10 @@ document.getElementById('volume-slider').oninput = (e) => {
 function updatePlayBtn(playing) {
   document.getElementById('btn-playpause').textContent = playing ? '⏸' : '▶';
 }
-
 function updateShuffleBtn(on) {
   document.getElementById('btn-shuffle').classList.toggle('active', on);
+  document.getElementById('btn-shuffle').title = on ? '셔플 켜짐' : '셔플';
 }
-
 function updateRepeatBtn(mode) {
   const btn = document.getElementById('btn-repeat');
   btn.classList.toggle('active', mode !== 'none');
@@ -204,27 +282,21 @@ function updateRepeatBtn(mode) {
 }
 
 function updateNowPlaying(song) {
-  const title = document.getElementById('now-playing-title');
-  const sub = document.getElementById('now-playing-sub');
-  const art = document.getElementById('now-playing-art');
-  const gTitle = document.getElementById('guest-title');
-  const gSub = document.getElementById('guest-sub');
-  const gArt = document.getElementById('guest-art');
-  if (song) {
-    title.textContent = song.title;
-    sub.textContent = song.channelTitle || '—';
-    art.innerHTML = `<img src="https://img.youtube.com/vi/${song.videoId}/default.jpg" alt="" />`;
-    gTitle.textContent = song.title;
-    gSub.textContent = song.channelTitle || '—';
-    gArt.innerHTML = `<img src="https://img.youtube.com/vi/${song.videoId}/default.jpg" alt="" />`;
-  } else {
-    title.textContent = '재생 중인 곡 없음';
-    sub.textContent = '—';
-    art.innerHTML = '♪';
-    gTitle.textContent = '재생 중인 곡 없음';
-    gSub.textContent = '호스트의 제어를 기다리는 중...';
-    gArt.innerHTML = '♪';
-  }
+  const setEls = (titleId, subId, artId) => {
+    document.getElementById(titleId).textContent = song ? song.title : '재생 중인 곡 없음';
+    document.getElementById(subId).textContent   = song ? (song.channelTitle || '—') : '—';
+    document.getElementById(artId).innerHTML     = song
+      ? `<img src="https://img.youtube.com/vi/${song.videoId}/default.jpg" alt="" />`
+      : '♪';
+  };
+  setEls('now-playing-title', 'now-playing-sub', 'now-playing-art');
+  setEls('guest-title', 'guest-sub', 'guest-art');
+}
+
+function highlightCurrentSong(songId) {
+  document.querySelectorAll('.song-item').forEach(el => {
+    el.classList.toggle('playing-now', !!songId && el.dataset.id === songId);
+  });
 }
 
 // ── Playlist UI ────────────────────────────────────
@@ -236,63 +308,69 @@ function renderPlaylists(playlists) {
     section.className = 'playlist-section';
     section.dataset.id = pl.id;
     section.dataset.idx = plIdx;
-
     section.innerHTML = `
-      <div class="playlist-header" data-pl-id="${pl.id}">
+      <div class="playlist-header">
         <div class="playlist-drag-handle" title="드래그해서 순서 변경">⠿</div>
         <span class="playlist-name">${esc(pl.name)}</span>
         <div class="playlist-actions">
-          <button class="btn btn--icon" title="곡 추가" onclick="openAddSong('${pl.id}')">+</button>
-          <button class="btn btn--icon btn--play-pl" title="플레이리스트 전체 재생" onclick="playPlaylist('${pl.id}')">▶</button>
+          <button class="btn btn--icon" title="곡 추가" onclick="openAddSong('${pl.id}')">＋</button>
+          ${isHost ? `<button class="btn btn--icon btn--play-pl" title="첫 곡 재생" onclick="playPlaylist('${pl.id}')">▶</button>` : ''}
           <button class="btn btn--icon btn--del" title="삭제" onclick="deletePlaylist('${pl.id}')">✕</button>
         </div>
       </div>
       <div class="song-list" id="songs-${pl.id}"></div>
     `;
-
     el.appendChild(section);
     renderSongs(pl.songs, pl.id, `songs-${pl.id}`);
     setupPlaylistDrag(section, plIdx);
   });
+
+  // Highlight current song after re-render
+  const cur = roomState?.currentSong?.id;
+  if (cur) highlightCurrentSong(cur);
 }
 
 function renderSongs(songs, playlistId, containerId) {
   const el = document.getElementById(containerId);
   if (!el) return;
   el.innerHTML = '';
+  if (songs.length === 0) {
+    el.innerHTML = '<p class="empty-hint" style="padding:0.4rem 0.8rem;font-size:0.77rem;">곡이 없습니다.</p>';
+    return;
+  }
   songs.forEach((song, idx) => {
     const item = document.createElement('div');
     item.className = 'song-item';
-    item.dataset.id = song.id;
+    item.dataset.id  = song.id;
     item.dataset.idx = idx;
-    item.draggable = true;
+    item.draggable   = true;
     item.innerHTML = `
       <div class="song-drag-handle">⠿</div>
-      <img class="song-thumb" src="https://img.youtube.com/vi/${song.videoId}/default.jpg" alt="" />
+      <img class="song-thumb" src="https://img.youtube.com/vi/${song.videoId}/default.jpg" alt="" loading="lazy" />
       <div class="song-info">
         <p class="song-title">${esc(song.title)}</p>
         <p class="song-ch">${esc(song.channelTitle || '')}</p>
       </div>
       <div class="song-actions">
-        ${isHost ? `<button class="btn btn--icon btn--play-song" title="재생" onclick="playSong('${JSON.stringify(song).replace(/'/g,"&#39;").replace(/"/g,'&quot;')}')">▶</button>` : ''}
+        ${isHost ? `<button class="btn btn--icon btn--play-song" title="재생" onclick="playSong(${JSON.stringify(JSON.stringify(song))})">▶</button>` : ''}
         <button class="btn btn--icon" title="이동" onclick="openMoveSong('${song.id}','${playlistId || ''}')">⇄</button>
         <button class="btn btn--icon btn--del" title="삭제" onclick="removeSong('${song.id}','${playlistId || ''}')">✕</button>
       </div>
     `;
-    setupSongDrag(item, idx, playlistId, el);
+    setupSongDrag(item, idx, playlistId);
     el.appendChild(item);
   });
-  if (songs.length === 0) el.innerHTML = '<p class="empty-hint" style="padding:0.5rem 1rem;font-size:0.8rem;">곡이 없습니다. + 버튼으로 추가하세요.</p>';
 }
 
 function renderQueue(queue) {
   renderSongs(queue, null, 'queue-list');
+  const cur = roomState?.currentSong?.id;
+  if (cur) highlightCurrentSong(cur);
 }
 
-function playSong(songJson) {
+function playSong(songJsonStr) {
   if (!isHost) return;
-  const song = JSON.parse(songJson.replace(/&quot;/g, '"').replace(/&#39;/g, "'"));
-  socket.emit('play-song', { song });
+  socket.emit('play-song', { song: JSON.parse(songJsonStr) });
 }
 
 function playPlaylist(playlistId) {
@@ -312,10 +390,8 @@ function removeSong(songId, playlistId) {
 // ── Add Song Modal ────────────────────────────────
 function openAddSong(playlistId) {
   addSongTargetPlaylistId = playlistId || null;
-  const title = playlistId
-    ? `곡 추가 — ${roomState?.playlists.find(p=>p.id===playlistId)?.name || ''}`
-    : '곡 추가 — 대기열';
-  document.getElementById('add-song-modal-title').textContent = title;
+  const pl = addSongTargetPlaylistId && roomState?.playlists.find(p => p.id === addSongTargetPlaylistId);
+  document.getElementById('add-song-modal-title').textContent = pl ? `곡 추가 — ${pl.name}` : '곡 추가 — 개별 대기열';
   document.getElementById('yt-url-input').value = '';
   document.getElementById('add-song-preview').classList.add('hidden');
   document.getElementById('add-song-modal').classList.remove('hidden');
@@ -323,20 +399,14 @@ function openAddSong(playlistId) {
 }
 
 document.getElementById('add-queue-song-btn').onclick = () => openAddSong(null);
+document.getElementById('add-song-cancel').onclick = () => document.getElementById('add-song-modal').classList.add('hidden');
 
-document.getElementById('add-song-cancel').onclick = () => {
-  document.getElementById('add-song-modal').classList.add('hidden');
-};
-
-document.getElementById('yt-url-input').oninput = debounce(async (e) => {
+document.getElementById('yt-url-input').oninput = debounce(async e => {
   const videoId = extractVideoId(e.target.value);
   const preview = document.getElementById('add-song-preview');
   if (!videoId) { preview.classList.add('hidden'); return; }
   preview.classList.remove('hidden');
-  preview.innerHTML = `
-    <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;border-radius:6px;" />
-    <p style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-muted);">Video ID: ${videoId}</p>
-  `;
+  preview.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;display:block;" />`;
 }, 400);
 
 document.getElementById('add-song-confirm').onclick = async () => {
@@ -344,8 +414,7 @@ document.getElementById('add-song-confirm').onclick = async () => {
   const videoId = extractVideoId(url);
   if (!videoId) { toast('올바른 YouTube 링크를 입력해주세요.', 'error'); return; }
 
-  // Fetch title via oEmbed
-  let title = 'Unknown Title', channelTitle = '';
+  let title = '(제목 없음)', channelTitle = '';
   try {
     const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
     const d = await r.json();
@@ -353,10 +422,8 @@ document.getElementById('add-song-confirm').onclick = async () => {
     channelTitle = d.author_name || '';
   } catch {}
 
-  socket.emit('add-song', {
-    playlistId: addSongTargetPlaylistId,
-    song: { videoId, title, channelTitle }
-  });
+  // ★ Key change: always just add to list, never auto-play
+  socket.emit('add-song', { playlistId: addSongTargetPlaylistId, song: { videoId, title, channelTitle } });
   document.getElementById('add-song-modal').classList.add('hidden');
   toast(`"${title}" 추가됨`, 'success');
 };
@@ -367,21 +434,14 @@ document.getElementById('add-playlist-btn').onclick = () => {
   document.getElementById('add-playlist-modal').classList.remove('hidden');
   document.getElementById('new-playlist-name').focus();
 };
-
-document.getElementById('create-playlist-cancel').onclick = () => {
-  document.getElementById('add-playlist-modal').classList.add('hidden');
-};
-
+document.getElementById('create-playlist-cancel').onclick = () => document.getElementById('add-playlist-modal').classList.add('hidden');
 document.getElementById('create-playlist-confirm').onclick = () => {
   const name = document.getElementById('new-playlist-name').value.trim();
   if (!name) { toast('이름을 입력해주세요.', 'error'); return; }
   socket.emit('create-playlist', { name });
   document.getElementById('add-playlist-modal').classList.add('hidden');
 };
-
-document.getElementById('new-playlist-name').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('create-playlist-confirm').click();
-});
+document.getElementById('new-playlist-name').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('create-playlist-confirm').click(); });
 
 // ── Move Song Modal ───────────────────────────────
 function openMoveSong(songId, fromPlaylistId) {
@@ -389,7 +449,6 @@ function openMoveSong(songId, fromPlaylistId) {
   const list = document.getElementById('move-target-list');
   list.innerHTML = '';
 
-  // Option: move to queue
   if (fromPlaylistId) {
     const btn = document.createElement('button');
     btn.className = 'move-target-btn';
@@ -398,7 +457,6 @@ function openMoveSong(songId, fromPlaylistId) {
     list.appendChild(btn);
   }
 
-  // Option: move to each playlist
   (roomState?.playlists || []).forEach(pl => {
     if (pl.id === fromPlaylistId) return;
     const btn = document.createElement('button');
@@ -408,32 +466,22 @@ function openMoveSong(songId, fromPlaylistId) {
     list.appendChild(btn);
   });
 
-  if (list.children.length === 0) list.innerHTML = '<p style="color:var(--text-muted);">이동할 수 있는 플레이리스트가 없습니다.</p>';
+  if (list.children.length === 0) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.87rem;">이동할 수 있는 위치가 없습니다.</p>';
   document.getElementById('move-song-modal').classList.remove('hidden');
 }
 
-document.getElementById('move-song-cancel').onclick = () => {
-  document.getElementById('move-song-modal').classList.add('hidden');
-};
+document.getElementById('move-song-cancel').onclick = () => document.getElementById('move-song-modal').classList.add('hidden');
 
-// ── Drag & Drop for playlists ─────────────────────
+// ── Drag & Drop ───────────────────────────────────
 function setupPlaylistDrag(section, idx) {
   const handle = section.querySelector('.playlist-drag-handle');
   handle.addEventListener('mousedown', () => { section.draggable = true; });
-  section.addEventListener('dragstart', (e) => {
-    dragSource = { type: 'playlist', idx };
-    e.dataTransfer.effectAllowed = 'move';
-  });
-  section.addEventListener('dragend', () => { section.draggable = false; });
-  section.addEventListener('dragover', (e) => {
-    if (!dragSource || dragSource.type !== 'playlist') return;
-    e.preventDefault();
-    section.classList.add('drag-over');
-  });
+  section.addEventListener('dragstart', e => { dragSource = { type: 'playlist', idx }; e.dataTransfer.effectAllowed = 'move'; });
+  section.addEventListener('dragend', () => { section.draggable = false; document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over')); });
+  section.addEventListener('dragover', e => { if (!dragSource || dragSource.type !== 'playlist') return; e.preventDefault(); section.classList.add('drag-over'); });
   section.addEventListener('dragleave', () => section.classList.remove('drag-over'));
-  section.addEventListener('drop', (e) => {
-    e.preventDefault();
-    section.classList.remove('drag-over');
+  section.addEventListener('drop', e => {
+    e.preventDefault(); section.classList.remove('drag-over');
     if (!dragSource || dragSource.type !== 'playlist') return;
     const toIdx = parseInt(section.dataset.idx);
     if (dragSource.idx !== toIdx) socket.emit('reorder-playlists', { fromIndex: dragSource.idx, toIndex: toIdx });
@@ -441,23 +489,12 @@ function setupPlaylistDrag(section, idx) {
   });
 }
 
-function setupSongDrag(item, idx, playlistId, container) {
-  item.addEventListener('dragstart', (e) => {
-    dragSource = { type: 'song', idx, playlistId };
-    e.dataTransfer.effectAllowed = 'move';
-    e.stopPropagation();
-  });
-  item.addEventListener('dragover', (e) => {
-    if (!dragSource || dragSource.type !== 'song' || dragSource.playlistId !== playlistId) return;
-    e.preventDefault();
-    e.stopPropagation();
-    item.classList.add('drag-over');
-  });
+function setupSongDrag(item, idx, playlistId) {
+  item.addEventListener('dragstart', e => { dragSource = { type: 'song', idx, playlistId }; e.dataTransfer.effectAllowed = 'move'; e.stopPropagation(); });
+  item.addEventListener('dragover', e => { if (!dragSource || dragSource.type !== 'song' || dragSource.playlistId !== playlistId) return; e.preventDefault(); e.stopPropagation(); item.classList.add('drag-over'); });
   item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
-  item.addEventListener('drop', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    item.classList.remove('drag-over');
+  item.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation(); item.classList.remove('drag-over');
     if (!dragSource || dragSource.type !== 'song' || dragSource.playlistId !== playlistId) return;
     const toIdx = parseInt(item.dataset.idx);
     if (dragSource.idx !== toIdx) socket.emit('reorder-songs', { playlistId: playlistId || null, fromIndex: dragSource.idx, toIndex: toIdx });
@@ -466,21 +503,16 @@ function setupSongDrag(item, idx, playlistId, container) {
 }
 
 // ── Copy buttons ──────────────────────────────────
-document.getElementById('copy-code').onclick = () => {
-  const code = document.getElementById('room-code').textContent;
-  navigator.clipboard.writeText(code).then(() => toast('코드 복사됨!', 'success'));
-};
+document.getElementById('copy-code').onclick = () => navigator.clipboard.writeText(document.getElementById('room-code').textContent).then(() => toast('코드 복사됨!', 'success'));
+document.getElementById('copy-link-btn').onclick = () => navigator.clipboard.writeText(window.location.href).then(() => toast('링크 복사됨!', 'success'));
 
-document.getElementById('copy-link-btn').onclick = () => {
-  navigator.clipboard.writeText(window.location.href).then(() => toast('링크 복사됨!', 'success'));
-};
-
-// ── Chat log ──────────────────────────────────────
-function log(msg, type = 'info') {
+// ── Activity log ──────────────────────────────────
+function log(msg, type = 'system') {
   const el = document.getElementById('chat-log');
   const item = document.createElement('p');
   item.className = `log-item log-item--${type}`;
-  item.textContent = `[${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}] ${msg}`;
+  const time = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  item.textContent = `[${time}] ${msg}`;
   el.appendChild(item);
   el.scrollTop = el.scrollHeight;
 }
@@ -492,24 +524,18 @@ function toast(msg, type = 'info') {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.classList.add('visible'), 10);
-  setTimeout(() => { t.classList.remove('visible'); setTimeout(() => t.remove(), 300); }, 2500);
+  setTimeout(() => { t.classList.remove('visible'); setTimeout(() => t.remove(), 250); }, 2500);
 }
 
-// ── Utils ─────────────────────────────────────────
+// ── Utilities ─────────────────────────────────────
 function extractVideoId(url) {
-  const patterns = [
-    /(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/,
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
-  }
-  return null;
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
 }
 
 function esc(s) {
   if (!s) return '';
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function debounce(fn, delay) {
@@ -518,11 +544,7 @@ function debounce(fn, delay) {
 }
 
 // Close modals on backdrop click
-document.querySelectorAll('.modal').forEach(m => {
-  m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
-});
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); }));
 
-// Enter key for add song
-document.getElementById('yt-url-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('add-song-confirm').click();
-});
+// Enter key shortcuts
+document.getElementById('yt-url-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-song-confirm').click(); });

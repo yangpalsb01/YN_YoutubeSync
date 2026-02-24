@@ -244,6 +244,13 @@ io.on('connection', (socket) => {
     if (pl) { pl.name = name.trim(); io.to(socket.roomId).emit('playlists-update', room.playlists); }
   });
 
+  // Rename room (host only)
+  socket.on('rename-room', ({ name }) => hostAction(room => {
+    if (!name || !name.trim()) return;
+    room.name = name.trim();
+    io.to(socket.roomId).emit('room-renamed', { name: room.name });
+  }));
+
   // Add song (to playlist or standalone queue)
   socket.on('add-song', ({ playlistId, song }) => {
     const room = rooms[socket.roomId];
