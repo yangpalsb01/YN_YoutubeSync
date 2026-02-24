@@ -20,7 +20,6 @@
     <div class="card-grid">
 
       <div class="card card--create">
-        <div class="card-icon">🎵</div>
         <h2 class="card-title">새 방 만들기</h2>
         <p class="card-desc">방을 생성하고 친구를 초대하세요.<br/>호스트는 모든 재생을 제어합니다.</p>
         <div class="form-group">
@@ -32,7 +31,6 @@
       </div>
 
       <div class="card card--join">
-        <div class="card-icon">🔑</div>
         <h2 class="card-title">코드로 입장</h2>
         <p class="card-desc">초대 코드를 입력해<br/>친구의 방에 참가하세요.</p>
         <div class="form-group">
@@ -52,6 +50,20 @@
       </div>
     </section>
   </main>
+
+  <!-- Force delete modal -->
+  <div class="modal hidden" id="force-delete-modal">
+    <div class="modal-box">
+      <h3>방 강제 삭제</h3>
+      <p style="color:var(--text-muted);font-size:0.87rem;margin-bottom:1rem;"><span id="force-delete-room-name"></span> 방을 삭제합니다.<br/>관리자 비밀번호를 입력하세요.</p>
+      <input type="password" id="force-delete-pw" class="input" placeholder="비밀번호" />
+      <p class="form-error hidden" id="force-delete-error"></p>
+      <div class="modal-actions">
+        <button class="btn btn--primary" id="force-delete-confirm">삭제</button>
+        <button class="btn btn--ghost" id="force-delete-cancel">취소</button>
+      </div>
+    </div>
+  </div>
 
   <div class="modal hidden" id="join-modal">
     <div class="modal-box">
@@ -77,6 +89,7 @@
           <span class="room-item-name">${esc(r.name)}</span>
           <span class="room-item-code">${r.code}</span>
           <button class="btn btn--sm btn--secondary" onclick="openJoinModal('${r.id}', '${esc(r.name)}')">입장</button>
+          <button class="btn btn--sm btn--icon-del" title="강제 삭제" onclick="openForceDelete('${r.id}', '${esc(r.name)}')">✕</button>
         </div>
       `).join('');
     }
@@ -129,6 +142,41 @@
     document.getElementById('join-nickname-input').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('join-code-btn').click());
     document.getElementById('join-modal-nickname').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('join-modal-confirm').click());
     document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); }));
+
+    // ── 강제 삭제 ──────────────────────────────────
+    let forceDeleteTargetId = null;
+
+    function openForceDelete(id, name) {
+      forceDeleteTargetId = id;
+      document.getElementById('force-delete-room-name').textContent = `"${name}"`;
+      document.getElementById('force-delete-pw').value = '';
+      document.getElementById('force-delete-error').classList.add('hidden');
+      document.getElementById('force-delete-modal').classList.remove('hidden');
+      document.getElementById('force-delete-pw').focus();
+    }
+
+    document.getElementById('force-delete-confirm').onclick = async () => {
+      const pw = document.getElementById('force-delete-pw').value;
+      const errEl = document.getElementById('force-delete-error');
+      const res = await fetch(`/api/rooms/${forceDeleteTargetId}/force`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw })
+      });
+      const data = await res.json();
+      if (data.error) {
+        errEl.textContent = data.error;
+        errEl.classList.remove('hidden');
+        return;
+      }
+      document.getElementById('force-delete-modal').classList.add('hidden');
+      loadRooms();
+    };
+    document.getElementById('force-delete-cancel').onclick = () =>
+      document.getElementById('force-delete-modal').classList.add('hidden');
+    document.getElementById('force-delete-pw').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('force-delete-confirm').click();
+    });
 
     loadRooms();
     setInterval(loadRooms, 5000);
