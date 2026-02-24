@@ -43,11 +43,17 @@ socket.on('room-state', state => {
     document.getElementById('room-name-hint').style.display = '';
     document.getElementById('room-name').title = '클릭하여 이름 변경';
     document.getElementById('delete-room-btn').style.display = '';
+    document.getElementById('sidebar').style.display = '';
+    document.getElementById('chat-section').style.display = '';
   } else {
     document.getElementById('player-bar').style.display = 'none';
     document.getElementById('player-bar-guest').style.display = 'flex';
     document.getElementById('room-name').style.cursor = 'default';
     document.getElementById('room-name').title = '';
+    document.getElementById('sidebar').style.display = 'none';
+    document.getElementById('chat-section').style.display = 'none';
+    document.getElementById('guest-main').style.display = '';
+    document.querySelector('.room-layout').classList.add('guest-mode');
   }
 
   applyVolume(state.volume);
@@ -78,6 +84,8 @@ socket.on('became-host', () => {
   document.getElementById('room-name-hint').style.display = '';
   document.getElementById('room-name').title = '클릭하여 이름 변경';
   document.getElementById('delete-room-btn').style.display = '';
+  document.getElementById('sidebar').style.display = '';
+  document.getElementById('chat-section').style.display = '';
   log('당신이 새 호스트가 되었습니다.', 'system');
   toast('호스트 권한을 받았습니다!', 'success');
 });
@@ -292,6 +300,18 @@ function updateNowPlaying(song) {
   };
   setEls('now-playing-title', 'now-playing-sub', 'now-playing-art');
   setEls('guest-title', 'guest-sub', 'guest-art');
+
+  // Update guest big card
+  const bigTitle = document.getElementById('guest-big-title');
+  const bigCh    = document.getElementById('guest-big-ch');
+  const bigArt   = document.getElementById('guest-big-art');
+  const anim     = document.getElementById('guest-anim');
+  if (bigTitle) bigTitle.textContent = song ? song.title : '재생 중인 곡 없음';
+  if (bigCh)    bigCh.textContent    = song ? (song.channelTitle || '—') : '—';
+  if (bigArt)   bigArt.innerHTML     = song
+    ? `<img src="https://img.youtube.com/vi/${song.videoId}/hqdefault.jpg" alt="" />`
+    : '♪';
+  if (anim) anim.style.display = song ? '' : 'none';
 }
 
 function highlightCurrentSong(songId) {
@@ -411,6 +431,8 @@ function openAddSong(playlistId) {
   const pl = addSongTargetPlaylistId && roomState?.playlists.find(p => p.id === addSongTargetPlaylistId);
   document.getElementById('add-song-modal-title').textContent = pl ? `곡 추가 — ${pl.name}` : '곡 추가 — 개별 대기열';
   document.getElementById('yt-url-input').value = '';
+  document.getElementById('custom-title-input').value = '';
+  document.getElementById('song-title-wrap').classList.add('hidden');
   document.getElementById('add-song-preview').classList.add('hidden');
   document.getElementById('add-song-modal').classList.remove('hidden');
   document.getElementById('yt-url-input').focus();
@@ -422,9 +444,29 @@ document.getElementById('add-song-cancel').onclick = () => document.getElementBy
 document.getElementById('yt-url-input').oninput = debounce(async e => {
   const videoId = extractVideoId(e.target.value);
   const preview = document.getElementById('add-song-preview');
-  if (!videoId) { preview.classList.add('hidden'); return; }
+  const titleWrap = document.getElementById('song-title-wrap');
+  const customInput = document.getElementById('custom-title-input');
+  if (!videoId) {
+    preview.classList.add('hidden');
+    titleWrap.classList.add('hidden');
+    customInput.value = '';
+    return;
+  }
   preview.classList.remove('hidden');
   preview.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;display:block;" />`;
+  // Fetch YouTube title as default
+  try {
+    const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+    const d = await r.json();
+    customInput.placeholder = d.title || '곡 이름을 직접 입력하세요...';
+    customInput._ytTitle = d.title || '';
+    customInput._ytChannel = d.author_name || '';
+  } catch {
+    customInput.placeholder = '곡 이름을 직접 입력하세요...';
+    customInput._ytTitle = '';
+    customInput._ytChannel = '';
+  }
+  titleWrap.classList.remove('hidden');
 }, 400);
 
 document.getElementById('add-song-confirm').onclick = async () => {
@@ -432,15 +474,12 @@ document.getElementById('add-song-confirm').onclick = async () => {
   const videoId = extractVideoId(url);
   if (!videoId) { toast('올바른 YouTube 링크를 입력해주세요.', 'error'); return; }
 
-  let title = '(제목 없음)', channelTitle = '';
-  try {
-    const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-    const d = await r.json();
-    title = d.title || title;
-    channelTitle = d.author_name || '';
-  } catch {}
+  const customInput = document.getElementById('custom-title-input');
+  const customTitle = customInput.value.trim();
+  // Use custom title if entered; otherwise use the fetched YouTube title
+  const title = customTitle || customInput._ytTitle || '(제목 없음)';
+  const channelTitle = customInput._ytChannel || '';
 
-  // ★ Key change: always just add to list, never auto-play
   socket.emit('add-song', { playlistId: addSongTargetPlaylistId, song: { videoId, title, channelTitle } });
   document.getElementById('add-song-modal').classList.add('hidden');
   toast(`"${title}" 추가됨`, 'success');

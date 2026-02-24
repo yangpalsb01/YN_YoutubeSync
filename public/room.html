@@ -81,7 +81,7 @@
   <!-- Main layout -->
   <div class="room-layout">
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <span class="sidebar-title">플레이리스트</span>
         <button class="btn btn--icon" id="add-playlist-btn" title="플레이리스트 추가">＋</button>
@@ -99,10 +99,23 @@
       </div>
     </aside>
 
-    <section class="chat-section">
+    <section class="chat-section" id="chat-section">
       <div class="chat-section-header">활동 로그</div>
       <div class="chat-log" id="chat-log"></div>
     </section>
+
+    <!-- Guest view: only shows current song -->
+    <div class="guest-main" id="guest-main" style="display:none;">
+      <div class="guest-now-playing-card">
+        <p class="guest-label">지금 재생 중</p>
+        <div class="guest-big-art" id="guest-big-art">♪</div>
+        <p class="guest-big-title" id="guest-big-title">재생 중인 곡 없음</p>
+        <p class="guest-big-ch" id="guest-big-ch">—</p>
+        <div class="guest-playing-anim" id="guest-anim" style="display:none;">
+          <span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
 
   </div>
 
@@ -113,6 +126,10 @@
       <input type="url" id="yt-url-input" class="input" placeholder="YouTube 링크 붙여넣기..." />
       <p class="form-hint">예: https://www.youtube.com/watch?v=...</p>
       <div id="add-song-preview" class="song-preview hidden"></div>
+      <div id="song-title-wrap" class="song-title-edit hidden">
+        <label class="field-label">곡 이름 <span style="color:var(--text-light);font-weight:400;">(선택 — 비우면 유튜브 제목 사용)</span></label>
+        <input type="text" id="custom-title-input" class="input" placeholder="곡 이름을 직접 입력하세요..." maxlength="100" />
+      </div>
       <div class="modal-actions">
         <button class="btn btn--primary" id="add-song-confirm">추가</button>
         <button class="btn btn--ghost" id="add-song-cancel">취소</button>

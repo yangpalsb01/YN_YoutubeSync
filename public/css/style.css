@@ -369,3 +369,69 @@ a { color: var(--accent); text-decoration: none; }
   background: transparent; color: var(--error); border-color: #e0b0b0;
 }
 .btn--danger:hover { background: #fdf0f0; border-color: var(--error); }
+
+/* ── Custom title field in add-song modal ── */
+.song-title-edit {
+  margin-top: 0.75rem;
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+.field-label {
+  font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+/* ── Guest full-screen now-playing card ── */
+.guest-main {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); overflow: hidden;
+}
+
+.guest-now-playing-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 1rem; padding: 2.5rem 2rem; text-align: center;
+  max-width: 420px; width: 100%;
+}
+
+.guest-label {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em;
+  color: var(--text-light); font-weight: 600;
+}
+
+.guest-big-art {
+  width: 220px; height: 220px; border-radius: 12px;
+  background: var(--surface3); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem; color: var(--text-muted); overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.guest-big-art img { width: 100%; height: 100%; object-fit: cover; }
+
+.guest-big-title {
+  font-family: 'DM Serif Display', serif; font-size: 1.4rem;
+  color: var(--text); line-height: 1.3; max-width: 360px;
+}
+.guest-big-ch { font-size: 0.88rem; color: var(--text-muted); }
+
+/* Playing animation bars */
+.guest-playing-anim {
+  display: flex; align-items: flex-end; gap: 3px; height: 22px;
+}
+.guest-playing-anim span {
+  display: block; width: 4px; border-radius: 2px;
+  background: var(--accent); animation: bar-bounce 1s ease-in-out infinite;
+}
+.guest-playing-anim span:nth-child(1) { animation-delay: 0s;    height: 10px; }
+.guest-playing-anim span:nth-child(2) { animation-delay: 0.15s; height: 18px; }
+.guest-playing-anim span:nth-child(3) { animation-delay: 0.3s;  height: 14px; }
+.guest-playing-anim span:nth-child(4) { animation-delay: 0.45s; height: 20px; }
+
+@keyframes bar-bounce {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+  50%       { transform: scaleY(1);   opacity: 1; }
+}
+
+/* room-layout: guest gets full width */
+.room-layout.guest-mode {
+  grid-template-columns: 1fr;
+}

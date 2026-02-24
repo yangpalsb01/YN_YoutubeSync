@@ -300,15 +300,22 @@ io.on('connection', (socket) => {
     io.to(socket.roomId).emit('playlists-update', room.playlists);
   });
 
-  // Reorder songs inside playlist
+  // Reorder songs inside playlist OR queue
   socket.on('reorder-songs', ({ playlistId, fromIndex, toIndex }) => {
     const room = rooms[socket.roomId];
     if (!room) return;
-    const pl = room.playlists.find(p => p.id === playlistId);
-    if (!pl) return;
-    const [moved] = pl.songs.splice(fromIndex, 1);
-    pl.songs.splice(toIndex, 0, moved);
-    io.to(socket.roomId).emit('playlists-update', room.playlists);
+    if (playlistId) {
+      const pl = room.playlists.find(p => p.id === playlistId);
+      if (!pl) return;
+      const [moved] = pl.songs.splice(fromIndex, 1);
+      pl.songs.splice(toIndex, 0, moved);
+      io.to(socket.roomId).emit('playlists-update', room.playlists);
+    } else {
+      // Reorder standalone queue
+      const [moved] = room.queue.splice(fromIndex, 1);
+      room.queue.splice(toIndex, 0, moved);
+      io.to(socket.roomId).emit('queue-update', room.queue);
+    }
   });
 
   // Move song to playlist
