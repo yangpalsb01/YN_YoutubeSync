@@ -104,7 +104,7 @@ socket.on('play', ({ videoId, time }) => {
     if (videoId) ytPlayer.loadVideoById(videoId, time || 0);
     else { ytPlayer.seekTo(time || 0, true); ytPlayer.playVideo(); }
     if (!isHost) {
-      if (audioUnlocked) { ytPlayer.unMute(); applyVolume(roomState?.volume ?? 80); }
+      if (audioUnlocked) { ytPlayer.unMute(); ytPlayer.setVolume(calcGuestVolume()); }
       else { ytPlayer.mute(); showUnlockBanner(); }
     }
   }
@@ -119,7 +119,10 @@ socket.on('pause', ({ time }) => {
 });
 
 socket.on('seek', ({ time }) => { if (ytPlayer && ytReady) ytPlayer.seekTo(time, true); });
-socket.on('volume', ({ volume }) => applyVolume(volume));
+socket.on('volume', ({ volume }) => {
+  if (roomState) roomState.volume = volume; // 마스터 먼저 반영
+  applyVolume(volume);
+});
 
 socket.on('stop', () => {
   if (ytPlayer && ytReady) ytPlayer.stopVideo();
@@ -186,12 +189,12 @@ function playYT(videoId, time) {
   ytPlayer.loadVideoById({ videoId, startSeconds: time || 0 });
   if (isHost) {
     ytPlayer.unMute();
-    applyVolume(roomState?.volume ?? 80);
+    ytPlayer.setVolume(roomState?.volume ?? 80);
   } else {
     // Guests: keep muted until user clicks (browser autoplay policy)
     if (audioUnlocked) {
       ytPlayer.unMute();
-      applyVolume(roomState?.volume ?? 80);
+      ytPlayer.setVolume(calcGuestVolume()); // 마스터 × 로컬 비율
     } else {
       ytPlayer.mute();
       showUnlockBanner();
