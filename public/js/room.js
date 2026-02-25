@@ -203,8 +203,12 @@ function unlockAudio() {
   audioUnlocked = true;
   if (ytPlayer && ytReady) {
     ytPlayer.unMute();
-    applyVolume(roomState?.volume ?? 80);
-    // If something is already playing, resume at correct position
+    // 게스트는 로컬 슬라이더 값, 호스트는 서버 볼륨 적용
+    const guestSlider = document.getElementById('guest-volume-slider');
+    const vol = isHost
+      ? (roomState?.volume ?? 80)
+      : (guestSlider ? parseInt(guestSlider.value) : 80);
+    ytPlayer.setVolume(vol);
     if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
       ytPlayer.playVideo();
     }
@@ -232,49 +236,20 @@ function hideUnlockBanner() {
 }
 
 function applyVolume(vol) {
-  if (ytPlayer && ytReady) ytPlayer.setVolume(vol);
-  const volLabel = document.getElementById('vol-label');
+  const volLabel  = document.getElementById('vol-label');
   const volSlider = document.getElementById('volume-slider');
-  if (volLabel) volLabel.textContent = vol;
+  if (volLabel)  volLabel.textContent = vol;
   if (volSlider) volSlider.value = vol;
+
+  if (isHost) {
+    // 호스트: 서버 볼륨을 직접 적용
+    if (ytPlayer && ytReady) ytPlayer.setVolume(vol);
+  }
+  // 게스트: 로컬 슬라이더 값을 유지 (서버 볼륨 무시)
 }
 
 // ── Room name inline edit ─────────────────────────
 const roomNameEl = document.getElementById('room-name');
-
-roomNameEl.addEventListener('click', () => {
-  if (!isHost) return;
-  const current = roomNameEl.textContent;
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.className = 'room-name-input';
-  input.value = current;
-  input.maxLength = 30;
-  roomNameEl.replaceWith(input);
-  input.focus();
-  input.select();
-
-  function commit() {
-    const newName = input.value.trim();
-    const span = document.createElement('span');
-    span.id = 'room-name';
-    span.className = 'room-name';
-    span.title = '클릭하여 이름 변경';
-    span.textContent = newName || current;
-    input.replaceWith(span);
-    // Re-attach click listener
-    span.addEventListener('click', roomNameEl._clickHandler || (() => {}));
-    // Rebind
-    bindRoomNameClick(span);
-    if (newName && newName !== current) socket.emit('rename-room', { name: newName });
-  }
-
-  input.addEventListener('blur', commit);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { input.blur(); }
-    if (e.key === 'Escape') { input.value = current; input.blur(); }
-  });
-});
 
 function bindRoomNameClick(el) {
   el.addEventListener('click', function handler() {
@@ -303,7 +278,6 @@ function bindRoomNameClick(el) {
   });
 }
 
-// Also bind the initial element that was clicked
 bindRoomNameClick(roomNameEl);
 
 // ── Host Controls ─────────────────────────────────
@@ -320,7 +294,7 @@ document.getElementById('btn-prev').onclick = () => {
   if (!isHost) return;
   const t = ytPlayer && ytReady ? ytPlayer.getCurrentTime() : 0;
   if (t > 5) socket.emit('seek', { time: 0 });
-  else socket.emit('next-song');
+  else socket.emit('prev-song');
 };
 
 document.getElementById('btn-shuffle').onclick = () => isHost && socket.emit('toggle-shuffle');
@@ -331,6 +305,16 @@ document.getElementById('volume-slider').oninput = e => {
   socket.emit('volume', { volume: parseInt(e.target.value) });
   applyVolume(parseInt(e.target.value));
 };
+
+// Guest local volume (does NOT emit to server — local only)
+const guestVolSlider = document.getElementById('guest-volume-slider');
+if (guestVolSlider) {
+  guestVolSlider.oninput = e => {
+    const vol = parseInt(e.target.value);
+    document.getElementById('guest-vol-label').textContent = vol;
+    if (ytPlayer && ytReady) ytPlayer.setVolume(vol);
+  };
+}
 
 // ── Timeline (seek bar) ───────────────────────────
 let timelineIsSeeking = false;
@@ -500,7 +484,7 @@ function renderSongs(songs, playlistId, containerId) {
       <div class="song-drag-handle">⠿</div>
       <img class="song-thumb" src="https://img.youtube.com/vi/${song.videoId}/default.jpg" alt="" loading="lazy" />
       <div class="song-info">
-        <p class="song-title">${esc(song.title)}</p>
+        <p class="song-title"><a class="song-yt-link" href="https://www.youtube.com/watch?v=${song.videoId}" target="_blank" rel="noopener" title="YouTube에서 열기">${esc(song.title)}</a></p>
         <p class="song-ch">${esc(song.channelTitle || '')}</p>
         ${song.memo ? `<p class="song-memo">${esc(song.memo)}</p>` : ''}
       </div>

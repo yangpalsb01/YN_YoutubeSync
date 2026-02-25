@@ -241,6 +241,23 @@ io.on('connection', (socket) => {
     saveRoomDebounced(room);
   }));
 
+  // Prev song
+  socket.on('prev-song', () => hostAction(room => {
+    const prev = getPrevSong(room);
+    if (prev) {
+      room.currentSong   = prev;
+      room.currentTime   = 0;
+      room.isPlaying     = true;
+      room.lastTimeUpdate = Date.now();
+      io.to(socket.roomId).emit('play-song', { song: prev });
+    } else {
+      room.isPlaying   = false;
+      room.currentSong = null;
+      io.to(socket.roomId).emit('stop');
+    }
+    saveRoomDebounced(room);
+  }));
+
   // Next song
   socket.on('next-song', () => hostAction(room => {
     const next = getNextSong(room);
@@ -443,6 +460,52 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+// ── 이전 곡 결정 ──────────────────────────────
+function getPrevSong(room) {
+  let context = null;
+
+  if (room.currentSong) {
+    if (room.queue.some(s => s.id === room.currentSong.id)) {
+      context = { songs: room.queue };
+    }
+    if (!context) {
+      for (const pl of room.playlists) {
+        if (pl.songs.some(s => s.id === room.currentSong.id)) {
+          context = { songs: pl.songs };
+          break;
+        }
+      }
+    }
+  }
+
+  if (!context) {
+    if (room.queue.length > 0) context = { songs: room.queue };
+    else {
+      const first = room.playlists.find(pl => pl.songs.length > 0);
+      if (first) context = { songs: first.songs };
+    }
+  }
+
+  if (!context || context.songs.length === 0) return null;
+
+  const songs = context.songs;
+
+  if (room.shuffle) {
+    if (songs.length === 1) return songs[0];
+    const candidates = room.currentSong
+      ? songs.filter(s => s.id !== room.currentSong.id)
+      : songs;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  if (!room.currentSong) return songs[songs.length - 1];
+  const idx = songs.findIndex(s => s.id === room.currentSong.id);
+  if (idx === -1) return songs[0];
+  const prevIdx = idx - 1;
+  if (prevIdx < 0) return room.repeat === 'all' ? songs[songs.length - 1] : null;
+  return songs[prevIdx];
+}
 
 // ── 다음 곡 결정 ──────────────────────────────
 function getNextSong(room) {
