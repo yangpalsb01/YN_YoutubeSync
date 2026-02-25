@@ -588,3 +588,14 @@ a { color: var(--accent); text-decoration: none; }
   min-width: 2ch;
   text-align: right;
 }
+
+/* ── Guest big title link ── */
+.guest-title-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s, text-decoration 0.15s;
+}
+.guest-title-link:hover {
+  color: #c00;
+  text-decoration: underline;
+}

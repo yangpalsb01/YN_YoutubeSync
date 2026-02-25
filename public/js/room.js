@@ -203,11 +203,8 @@ function unlockAudio() {
   audioUnlocked = true;
   if (ytPlayer && ytReady) {
     ytPlayer.unMute();
-    // 게스트는 로컬 슬라이더 값, 호스트는 서버 볼륨 적용
-    const guestSlider = document.getElementById('guest-volume-slider');
-    const vol = isHost
-      ? (roomState?.volume ?? 80)
-      : (guestSlider ? parseInt(guestSlider.value) : 80);
+    // 호스트: 마스터 볼륨 / 게스트: 마스터 × 로컬 비율
+    const vol = isHost ? (roomState?.volume ?? 80) : calcGuestVolume();
     ytPlayer.setVolume(vol);
     if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
       ytPlayer.playVideo();
@@ -235,17 +232,28 @@ function hideUnlockBanner() {
   if (banner) banner.style.display = 'none';
 }
 
+// 게스트 실제 볼륨 = 마스터(호스트) × 로컬 비율(게스트)
+// 예) 마스터 60, 로컬 50% → 실제 30 (컴퓨터 볼륨 × 스피커 볼륨 개념)
+function calcGuestVolume() {
+  const masterVol   = roomState?.volume ?? 100;
+  const guestSlider = document.getElementById('guest-volume-slider');
+  const localVol    = guestSlider ? parseInt(guestSlider.value) : 100;
+  return Math.round((masterVol / 100) * localVol);
+}
+
 function applyVolume(vol) {
+  // 호스트 슬라이더 UI 업데이트
   const volLabel  = document.getElementById('vol-label');
   const volSlider = document.getElementById('volume-slider');
   if (volLabel)  volLabel.textContent = vol;
   if (volSlider) volSlider.value = vol;
 
   if (isHost) {
-    // 호스트: 서버 볼륨을 직접 적용
     if (ytPlayer && ytReady) ytPlayer.setVolume(vol);
+  } else {
+    // 게스트: 마스터가 바뀌어도 자신의 로컬 비율 유지
+    if (ytPlayer && ytReady) ytPlayer.setVolume(calcGuestVolume());
   }
-  // 게스트: 로컬 슬라이더 값을 유지 (서버 볼륨 무시)
 }
 
 // ── Room name inline edit ─────────────────────────
@@ -307,12 +315,13 @@ document.getElementById('volume-slider').oninput = e => {
 };
 
 // Guest local volume (does NOT emit to server — local only)
+// 실제 볼륨 = 마스터(호스트) × 로컬 비율(게스트) / 100
 const guestVolSlider = document.getElementById('guest-volume-slider');
 if (guestVolSlider) {
   guestVolSlider.oninput = e => {
-    const vol = parseInt(e.target.value);
-    document.getElementById('guest-vol-label').textContent = vol;
-    if (ytPlayer && ytReady) ytPlayer.setVolume(vol);
+    const label = document.getElementById('guest-vol-label');
+    if (label) label.textContent = e.target.value;
+    if (ytPlayer && ytReady) ytPlayer.setVolume(calcGuestVolume());
   };
 }
 
@@ -399,7 +408,9 @@ function updateNowPlaying(song) {
   const bigCh    = document.getElementById('guest-big-ch');
   const bigArt   = document.getElementById('guest-big-art');
   const anim     = document.getElementById('guest-anim');
-  if (bigTitle) bigTitle.textContent = song ? song.title : '재생 중인 곡 없음';
+  if (bigTitle) bigTitle.innerHTML = song
+    ? `<a class="song-yt-link guest-title-link" href="https://www.youtube.com/watch?v=${song.videoId}" target="_blank" rel="noopener" title="YouTube에서 열기">${esc(song.title)}</a>`
+    : '재생 중인 곡 없음';
   if (bigCh)    bigCh.textContent    = song ? (song.channelTitle || '—') : '—';
   if (bigArt)   bigArt.innerHTML     = song
     ? `<img src="https://img.youtube.com/vi/${song.videoId}/hqdefault.jpg" alt="" />`
