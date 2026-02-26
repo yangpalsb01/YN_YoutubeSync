@@ -301,7 +301,7 @@ a { color: var(--accent); text-decoration: none; }
 .guest-status { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; color: var(--text-muted); font-size: 1.3rem; }
 
 /* Layout */
-.room-layout { display: grid; grid-template-columns: 298px 1fr; flex: 1; overflow: hidden; }
+.room-layout { display: grid; grid-template-columns: 420px 1fr; flex: 1; overflow: hidden; }
 @media (max-width: 700px) { .room-layout { grid-template-columns: 1fr; } .chat-section { display: none; } }
 
 /* Sidebar */
@@ -599,3 +599,12 @@ a { color: var(--accent); text-decoration: none; }
   color: #c00;
   text-decoration: underline;
 }
+
+/* ── Song loop button ── */
+.js-loop-song { color: var(--text-light); }
+.js-loop-song.loop-active {
+  color: var(--accent);
+  background: var(--surface3);
+  font-weight: 700;
+}
+.js-loop-song:hover { color: var(--accent2); }

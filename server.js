@@ -292,7 +292,11 @@ io.on('connection', (socket) => {
 
   // Song ended
   socket.on('song-ended', () => hostAction(room => {
-    if (room.repeat === 'one') {
+    // 곡 단위 반복이 켜진 경우 해당 곡을 반복 (전체/한곡 반복보다 우선)
+    if (room.currentSong?.loop) {
+      room.currentTime = 0;
+      io.to(socket.roomId).emit('play-song', { song: room.currentSong });
+    } else if (room.repeat === 'one') {
       room.currentTime = 0;
       io.to(socket.roomId).emit('play-song', { song: room.currentSong });
     } else {
@@ -364,6 +368,27 @@ io.on('connection', (socket) => {
     delete rooms[roomId];
     await deleteRoom(roomId);
   }));
+
+  // Toggle song loop (곡별 반복 설정)
+  socket.on('toggle-song-loop', ({ playlistId, songId }) => {
+    const room = rooms[socket.roomId];
+    if (!room) return;
+    let song;
+    if (playlistId) {
+      const pl = room.playlists.find(p => p.id === playlistId);
+      if (pl) song = pl.songs.find(s => s.id === songId);
+    } else {
+      song = room.queue.find(s => s.id === songId);
+    }
+    if (!song) return;
+    song.loop = !song.loop;
+    if (playlistId) {
+      io.to(socket.roomId).emit('playlists-update', room.playlists);
+    } else {
+      io.to(socket.roomId).emit('queue-update', room.queue);
+    }
+    saveRoomDebounced(room);
+  });
 
   // Add song
   socket.on('add-song', ({ playlistId, song }) => {

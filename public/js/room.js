@@ -504,6 +504,7 @@ function renderSongs(songs, playlistId, containerId) {
       </div>
       <div class="song-actions">
         ${isHost ? `<button class="btn btn--icon btn--play-song js-play-song" title="재생">▶</button>` : ''}
+        ${isHost ? `<button class="btn btn--icon js-loop-song${song.loop ? ' loop-active' : ''}" title="${song.loop ? '반복 켜짐 (클릭해서 끄기)' : '반복 끄기 (클릭해서 켜기)'}">↻</button>` : ''}
         <button class="btn btn--icon js-move-song" title="이동">⇄</button>
         <button class="btn btn--icon btn--del js-remove-song" title="삭제">✕</button>
       </div>
@@ -514,6 +515,10 @@ function renderSongs(songs, playlistId, containerId) {
       item.querySelector('.js-play-song').addEventListener('click', (e) => {
         e.stopPropagation();
         socket.emit('play-song', { song });
+      });
+      item.querySelector('.js-loop-song').addEventListener('click', (e) => {
+        e.stopPropagation();
+        socket.emit('toggle-song-loop', { playlistId: playlistId || null, songId: song.id });
       });
     }
     item.querySelector('.js-move-song').addEventListener('click', (e) => {
