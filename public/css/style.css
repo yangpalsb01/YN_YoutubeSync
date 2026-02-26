@@ -601,7 +601,11 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 /* ── Song loop button ── */
-.js-loop-song { color: var(--text-light); }
+.js-loop-song {
+  color: var(--text-light);
+  font-size: 1.15rem;   /* ↻ 기호가 작아서 다른 아이콘과 맞춤 */
+  line-height: 1;
+}
 .js-loop-song.loop-active {
   color: var(--accent);
   background: var(--surface3);
