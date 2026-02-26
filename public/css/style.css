@@ -113,6 +113,21 @@ a { color: var(--accent); text-decoration: none; }
 .site-header .logo-text { font-size: 2rem; }
 .tagline { color: var(--text-muted); font-size: 0.83rem; margin-top: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; }
 
+.site-notice {
+  text-align: center;
+  margin: 0 auto 1.6rem;
+  max-width: 480px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+.site-notice p { margin: 0; }
+.site-notice-warn {
+  margin-top: 0.8rem !important;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .lobby-main { max-width: 840px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
 
 .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 3rem; }
@@ -598,6 +613,18 @@ a { color: var(--accent); text-decoration: none; }
 .guest-title-link:hover {
   color: #c00;
   text-decoration: underline;
+}
+
+/* ── Modal warning text ── */
+.form-warn {
+  font-size: 0.78rem;
+  color: #9a6200;
+  background: #fff8e1;
+  border: 1px solid #f0d070;
+  border-radius: 5px;
+  padding: 0.4rem 0.7rem;
+  margin-top: 0.4rem;
+  line-height: 1.5;
 }
 
 /* ── Song loop button ── */
