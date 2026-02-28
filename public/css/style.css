@@ -115,7 +115,7 @@ a { color: var(--accent); text-decoration: none; }
 
 .site-notice {
   text-align: center;
-  margin: 1.4rem auto 1.6rem;
+  margin: 1.4rem auto 1.0rem;
   max-width: 480px;
   color: var(--text-muted);
   font-size: 0.85rem;
@@ -439,11 +439,18 @@ a { color: var(--accent); text-decoration: none; }
   border-radius: var(--radius); padding: 0.62rem 1.1rem;
   font-size: 0.84rem; color: var(--text); box-shadow: var(--shadow-lg);
   opacity: 0; transform: translateY(6px); transition: opacity 0.2s, transform 0.2s;
-  pointer-events: none;
+  pointer-events: none; max-width: 320px;
 }
 .toast.visible { opacity: 1; transform: translateY(0); }
+.toast--large {
+  font-size: 0.97rem;
+  padding: 0.85rem 1.3rem;
+  font-weight: 600;
+  max-width: 360px;
+}
 .toast--success { border-color: #a8d4ae; color: var(--success); }
 .toast--error { border-color: #e0b0b0; color: var(--error); }
+.toast--info { border-color: #b8c8e0; color: #3a5a8a; }
 
 /* Danger button */
 .btn--danger {

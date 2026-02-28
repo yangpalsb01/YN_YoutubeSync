@@ -586,7 +586,26 @@ const PORT = process.env.PORT || 4200;
 connectDB()
   .then(() => loadRoomsFromDB())
   .then(() => {
-    server.listen(PORT, () => console.log(`🎵 JukeSync running on port ${PORT}`));
+    server.listen(PORT, () => {
+      console.log(`🎵 JukeSync running on port ${PORT}`);
+
+      // Render.com 무료 플랜 슬립 방지: 14분마다 자기 자신에게 ping
+      const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+      if (SELF_URL) {
+        setInterval(async () => {
+          try {
+            const https = require('https');
+            https.get(SELF_URL, res => {
+              console.log(`🏓 Self-ping OK (${res.statusCode})`);
+            }).on('error', e => {
+              console.warn('Self-ping 실패:', e.message);
+            });
+          } catch (e) {
+            console.warn('Self-ping 오류:', e.message);
+          }
+        }, 14 * 60 * 1000); // 14분
+      }
+    });
   })
   .catch(err => {
     console.error('서버 시작 실패:', err);

@@ -174,14 +174,16 @@ window.onYouTubeIframeAPIReady = function () {
         if (!isHost) showUnlockBanner();
       },
       onError: e => {
-        // 101, 150: 업로더가 외부 임베드 재생을 차단한 경우
+        let msg;
         if (e.data === 101 || e.data === 150) {
-          toast('⚠️ 이 영상은 외부 재생이 차단되어 있습니다. (업로더 설정)', 'error');
+          msg = '⚠️ 이 영상은 외부 재생이 차단되어 있습니다. (업로더 설정)';
         } else if (e.data === 100) {
-          toast('⚠️ 영상을 찾을 수 없습니다. (삭제되었거나 비공개)', 'error');
+          msg = '⚠️ 영상을 찾을 수 없습니다. (삭제되었거나 비공개)';
         } else {
-          toast(`⚠️ 재생 오류가 발생했습니다. (코드: ${e.data})`, 'error');
+          msg = `⚠️ 재생 오류가 발생했습니다. (코드: ${e.data})`;
         }
+        toast(msg, 'error', true); // true = 크게 표시
+        log(msg, 'error');
       },
       onStateChange: e => {
         if (e.data === YT.PlayerState.ENDED && isHost) {
@@ -637,6 +639,18 @@ document.getElementById('add-song-confirm').onclick = async () => {
   const channelTitle = customInput._ytChannel || '';
   const memo = document.getElementById('custom-memo-input').value.trim();
 
+  // 같은 플레이리스트(또는 같은 대기열) 내 중복 체크
+  if (addSongTargetPlaylistId) {
+    const pl = roomState?.playlists.find(p => p.id === addSongTargetPlaylistId);
+    if (pl && pl.songs.some(s => s.videoId === videoId)) {
+      toast(`⚠️ 이미 이 플레이리스트에 있는 곡입니다.`, 'info');
+    }
+  } else {
+    if (roomState?.queue.some(s => s.videoId === videoId)) {
+      toast(`⚠️ 이미 개별 대기열에 있는 곡입니다.`, 'info');
+    }
+  }
+
   socket.emit('add-song', { playlistId: addSongTargetPlaylistId, song: { videoId, title, channelTitle, memo } });
   document.getElementById('add-song-modal').classList.add('hidden');
   toast(`"${title}" 추가됨`, 'success');
@@ -743,13 +757,15 @@ function log(msg, type = 'system') {
 }
 
 // ── Toast ─────────────────────────────────────────
-function toast(msg, type = 'info') {
+function toast(msg, type = 'info', large = false) {
   const t = document.createElement('div');
-  t.className = `toast toast--${type}`;
+  t.className = `toast toast--${type}${large ? ' toast--large' : ''}`;
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.classList.add('visible'), 10);
-  setTimeout(() => { t.classList.remove('visible'); setTimeout(() => t.remove(), 250); }, 2500);
+  // 에러는 4초, 일반은 2.5초 표시
+  const duration = (type === 'error') ? 4000 : 2500;
+  setTimeout(() => { t.classList.remove('visible'); setTimeout(() => t.remove(), 250); }, duration);
 }
 
 // ── Utilities ─────────────────────────────────────
