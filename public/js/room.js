@@ -474,6 +474,7 @@ function renderPlaylists(playlists) {
         <div class="playlist-actions">
           <button class="btn btn--icon js-add-song" title="곡 추가">＋</button>
           ${isHost ? '<button class="btn btn--icon btn--play-pl js-play-pl" title="첫 곡 재생">▶</button>' : ''}
+          <button class="btn btn--icon js-export-pl" title="플레이리스트 공유 코드 생성">⤴</button>
           <button class="btn btn--icon btn--del js-del-pl" title="삭제">✕</button>
         </div>
       </div>
@@ -483,6 +484,7 @@ function renderPlaylists(playlists) {
     section.querySelector('.js-add-song').addEventListener('click', () => openAddSong(pl.id));
     if (isHost) section.querySelector('.js-play-pl').addEventListener('click', () => playPlaylist(pl.id));
     section.querySelector('.js-del-pl').addEventListener('click', () => deletePlaylist(pl.id));
+    section.querySelector('.js-export-pl').addEventListener('click', () => exportPlaylist(pl));
     section.querySelector('.js-collapse').addEventListener('click', () => {
       const songList = document.getElementById('songs-' + pl.id);
       const btn = section.querySelector('.js-collapse');
@@ -798,3 +800,88 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
 document.getElementById('yt-url-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-song-confirm').click(); });
 document.getElementById('custom-title-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-song-confirm').click(); });
 document.getElementById('custom-memo-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-song-confirm').click(); });
+
+// ── Playlist Export / Import ──────────────────────
+
+async function exportPlaylist(pl) {
+  const btn = document.getElementById('share-code-value');
+  const hint = document.getElementById('share-code-hint');
+  btn.textContent = '생성 중...';
+  hint.textContent = '클릭하면 복사됩니다';
+  document.getElementById('share-code-modal').classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/share/playlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playlist: { name: pl.name, songs: pl.songs } }),
+    });
+    const data = await res.json();
+    if (data.error) { toast(data.error, 'error'); document.getElementById('share-code-modal').classList.add('hidden'); return; }
+    btn.textContent = data.code;
+  } catch (e) {
+    toast('코드 생성에 실패했습니다.', 'error');
+    document.getElementById('share-code-modal').classList.add('hidden');
+  }
+}
+
+document.getElementById('share-code-value').addEventListener('click', () => {
+  const code = document.getElementById('share-code-value').textContent;
+  if (!code || code === '생성 중...') return;
+  navigator.clipboard.writeText(code).then(() => {
+    document.getElementById('share-code-hint').textContent = '✅ 복사되었습니다!';
+    setTimeout(() => { document.getElementById('share-code-hint').textContent = '클릭하면 복사됩니다'; }, 2000);
+  });
+});
+
+document.getElementById('share-code-close').addEventListener('click', () => {
+  document.getElementById('share-code-modal').classList.add('hidden');
+});
+
+// 불러오기 버튼
+document.getElementById('import-playlist-btn').addEventListener('click', () => {
+  document.getElementById('import-code-input').value = '';
+  document.getElementById('import-error').classList.add('hidden');
+  document.getElementById('import-playlist-modal').classList.remove('hidden');
+  document.getElementById('import-code-input').focus();
+});
+
+document.getElementById('import-playlist-cancel').addEventListener('click', () => {
+  document.getElementById('import-playlist-modal').classList.add('hidden');
+});
+
+document.getElementById('import-playlist-confirm').addEventListener('click', async () => {
+  const code = document.getElementById('import-code-input').value.trim().toUpperCase();
+  const errEl = document.getElementById('import-error');
+  if (!code) { errEl.textContent = '코드를 입력해주세요.'; errEl.classList.remove('hidden'); return; }
+
+  try {
+    const res = await fetch(`/api/share/playlist/${code}`);
+    const data = await res.json();
+    if (data.error) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+
+    // 현재 방에 플레이리스트로 추가
+    socket.emit('create-playlist', { name: data.playlist.name });
+
+    // 플레이리스트 생성 후 곡 추가 — playlists-update 이벤트를 한 번 기다림
+    const addSongs = (playlists) => {
+      const newPl = playlists.find(p => p.name === data.playlist.name && p.songs.length === 0);
+      if (!newPl) return;
+      socket.off('playlists-update', addSongs);
+      data.playlist.songs.forEach(song => {
+        socket.emit('add-song', { playlistId: newPl.id, song: { videoId: song.videoId, title: song.title, channelTitle: song.channelTitle || '', memo: song.memo || '' } });
+      });
+      toast(`"${data.playlist.name}" 불러오기 완료 (${data.playlist.songs.length}곡)`, 'success');
+    };
+    socket.on('playlists-update', addSongs);
+
+    document.getElementById('import-playlist-modal').classList.add('hidden');
+  } catch (e) {
+    errEl.textContent = '불러오기에 실패했습니다.';
+    errEl.classList.remove('hidden');
+  }
+});
+
+document.getElementById('import-code-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('import-playlist-confirm').click();
+});

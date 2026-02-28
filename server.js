@@ -23,13 +23,17 @@ if (!MONGODB_URI) {
 }
 
 let db;
-let roomsCol; // rooms collection
+let roomsCol;        // rooms collection
+let sharedPlCol;     // shared playlist codes collection
 
 async function connectDB() {
   const client = new MongoClient(MONGODB_URI);
   await client.connect();
   db = client.db('jukesync');
-  roomsCol = db.collection('rooms');
+  roomsCol    = db.collection('rooms');
+  sharedPlCol = db.collection('shared_playlists');
+  // 만료 인덱스: createdAt 필드 기준 24시간 후 자동 삭제
+  await sharedPlCol.createIndex({ createdAt: 1 }, { expireAfterSeconds: 86400 });
   console.log('✅ MongoDB 연결 성공');
 }
 
@@ -154,6 +158,35 @@ app.get('/api/rooms/code/:code', (req, res) => {
   const room = getRoomByCode(req.params.code);
   if (!room) return res.status(404).json({ error: '코드를 확인해주세요.' });
   res.json({ id: room.id });
+});
+
+// ── Playlist share API ─────────────────────────
+
+// 플레이리스트 내보내기: 코드 생성
+app.post('/api/share/playlist', async (req, res) => {
+  const { playlist } = req.body;
+  if (!playlist || !playlist.name || !Array.isArray(playlist.songs)) {
+    return res.status(400).json({ error: '잘못된 요청입니다.' });
+  }
+  // 6자리 대문자 코드 생성 (충돌 방지 재시도)
+  let code, exists = true;
+  while (exists) {
+    code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    exists = await sharedPlCol.findOne({ code });
+  }
+  await sharedPlCol.insertOne({
+    code,
+    playlist: { name: playlist.name, songs: playlist.songs },
+    createdAt: new Date(),
+  });
+  res.json({ code });
+});
+
+// 플레이리스트 불러오기: 코드로 조회
+app.get('/api/share/playlist/:code', async (req, res) => {
+  const doc = await sharedPlCol.findOne({ code: req.params.code.toUpperCase() });
+  if (!doc) return res.status(404).json({ error: '코드를 찾을 수 없거나 만료되었습니다.' });
+  res.json({ playlist: doc.playlist });
 });
 
 // Admin force-delete

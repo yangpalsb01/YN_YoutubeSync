@@ -646,3 +646,37 @@ a { color: var(--accent); text-decoration: none; }
   font-weight: 700;
 }
 .js-loop-song:hover { color: var(--accent2); }
+
+/* ── Playlist share code display ── */
+.share-code-display {
+  display: inline-block;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  background: var(--surface3);
+  border: 2px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 0.6rem 1.4rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: monospace;
+  width: 100%;
+}
+.share-code-display:hover {
+  background: var(--bg2);
+  border-color: var(--accent);
+}
+.share-code-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+/* ── Export/Import 아이콘 크기 통일 ── */
+.js-export-pl {
+  font-size: 0.95rem;
+}
+#import-playlist-btn {
+  font-size: 0.95rem;
+}
