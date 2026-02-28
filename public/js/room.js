@@ -855,17 +855,19 @@ document.getElementById('import-playlist-confirm').addEventListener('click', asy
   const errEl = document.getElementById('import-error');
   if (!code) { errEl.textContent = '코드를 입력해주세요.'; errEl.classList.remove('hidden'); return; }
 
+  let addSongs = null;
   try {
     const res = await fetch(`/api/share/playlist/${code}`);
     const data = await res.json();
     if (data.error) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
 
-    // 현재 방에 플레이리스트로 추가
+    // create 전 기존 플레이리스트 id 스냅샷 → 새로 생긴 것을 정확히 특정
+    const existingIds = new Set((roomState?.playlists || []).map(p => p.id));
     socket.emit('create-playlist', { name: data.playlist.name });
 
-    // 플레이리스트 생성 후 곡 추가 — playlists-update 이벤트를 한 번 기다림
-    const addSongs = (playlists) => {
-      const newPl = playlists.find(p => p.name === data.playlist.name && p.songs.length === 0);
+    // playlists-update 이벤트에서 새 플레이리스트를 id 기준으로 찾아 곡 추가
+    addSongs = (playlists) => {
+      const newPl = playlists.find(p => !existingIds.has(p.id));
       if (!newPl) return;
       socket.off('playlists-update', addSongs);
       data.playlist.songs.forEach(song => {
@@ -877,6 +879,7 @@ document.getElementById('import-playlist-confirm').addEventListener('click', asy
 
     document.getElementById('import-playlist-modal').classList.add('hidden');
   } catch (e) {
+    if (addSongs) socket.off('playlists-update', addSongs); // 리스너 누수 방지
     errEl.textContent = '불러오기에 실패했습니다.';
     errEl.classList.remove('hidden');
   }

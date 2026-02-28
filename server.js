@@ -168,6 +168,15 @@ app.post('/api/share/playlist', async (req, res) => {
   if (!playlist || !playlist.name || !Array.isArray(playlist.songs)) {
     return res.status(400).json({ error: '잘못된 요청입니다.' });
   }
+  if (playlist.songs.length > 500) {
+    return res.status(400).json({ error: '곡이 너무 많습니다. (최대 500곡)' });
+  }
+  // 각 곡 필드 간단 검증
+  for (const s of playlist.songs) {
+    if (!s.videoId || typeof s.videoId !== 'string' || s.videoId.length > 20) {
+      return res.status(400).json({ error: '잘못된 곡 데이터가 포함되어 있습니다.' });
+    }
+  }
   // 6자리 대문자 코드 생성 (충돌 방지 재시도)
   let code, exists = true;
   while (exists) {
