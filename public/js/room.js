@@ -639,21 +639,28 @@ document.getElementById('add-song-confirm').onclick = async () => {
   const channelTitle = customInput._ytChannel || '';
   const memo = document.getElementById('custom-memo-input').value.trim();
 
-  // 같은 플레이리스트(또는 같은 대기열) 내 중복 체크
+  socket.emit('add-song', { playlistId: addSongTargetPlaylistId, song: { videoId, title, channelTitle, memo } });
+  document.getElementById('add-song-modal').classList.add('hidden');
+
+  // 같은 플레이리스트(또는 같은 대기열) 내 중복 체크 — 추가는 이미 됐으므로 경고만 표시
+  let isDuplicate = false;
   if (addSongTargetPlaylistId) {
     const pl = roomState?.playlists.find(p => p.id === addSongTargetPlaylistId);
-    if (pl && pl.songs.some(s => s.videoId === videoId)) {
-      toast(`⚠️ 이미 이 플레이리스트에 있는 곡입니다.`, 'info');
+    // 방금 추가된 곡이 이미 1개 이상 있으면 중복 (추가 전 기준이므로 1개 이상)
+    if (pl && pl.songs.filter(s => s.videoId === videoId).length >= 1) {
+      isDuplicate = true;
     }
   } else {
-    if (roomState?.queue.some(s => s.videoId === videoId)) {
-      toast(`⚠️ 이미 개별 대기열에 있는 곡입니다.`, 'info');
+    if (roomState?.queue.filter(s => s.videoId === videoId).length >= 1) {
+      isDuplicate = true;
     }
   }
 
-  socket.emit('add-song', { playlistId: addSongTargetPlaylistId, song: { videoId, title, channelTitle, memo } });
-  document.getElementById('add-song-modal').classList.add('hidden');
-  toast(`"${title}" 추가됨`, 'success');
+  if (isDuplicate) {
+    toast(`"${title}" 추가됨 (⚠️ 이미 있는 곡)`, 'info');
+  } else {
+    toast(`"${title}" 추가됨`, 'success');
+  }
 };
 
 // ── Add Playlist Modal ────────────────────────────

@@ -115,7 +115,7 @@ a { color: var(--accent); text-decoration: none; }
 
 .site-notice {
   text-align: center;
-  margin: 1.6rem auto 0.1rem;
+  margin: 1.4rem auto 0;
   max-width: 480px;
   color: var(--text-muted);
   font-size: 0.85rem;
@@ -439,14 +439,14 @@ a { color: var(--accent); text-decoration: none; }
   border-radius: var(--radius); padding: 0.62rem 1.1rem;
   font-size: 0.84rem; color: var(--text); box-shadow: var(--shadow-lg);
   opacity: 0; transform: translateY(6px); transition: opacity 0.2s, transform 0.2s;
-  pointer-events: none; max-width: 320px;
+  pointer-events: none; max-width: 420px; white-space: nowrap;
 }
 .toast.visible { opacity: 1; transform: translateY(0); }
 .toast--large {
   font-size: 0.97rem;
   padding: 0.85rem 1.3rem;
   font-weight: 600;
-  max-width: 360px;
+  max-width: 520px;
 }
 .toast--success { border-color: #a8d4ae; color: var(--success); }
 .toast--error { border-color: #e0b0b0; color: var(--error); }
