@@ -115,7 +115,7 @@ a { color: var(--accent); text-decoration: none; }
 
 .site-notice {
   text-align: center;
-  margin: 1.4rem auto 0.8rem;
+  margin: 1.4rem auto 0.1rem;
   max-width: 480px;
   color: var(--text-muted);
   font-size: 0.85rem;
