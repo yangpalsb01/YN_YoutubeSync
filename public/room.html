@@ -52,10 +52,27 @@
         </div>
       </div>
       <div class="player-controls">
-        <button class="ctrl-btn" id="btn-shuffle" title="셔플">⇄</button>
+        <button class="ctrl-btn" id="btn-shuffle" title="셔플">
+          <svg class="ctrl-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>
+          </svg>
+        </button>
         <button class="ctrl-btn" id="btn-prev" title="이전">⏮</button>
         <button class="ctrl-btn ctrl-btn--main" id="btn-playpause">▶</button>
         <button class="ctrl-btn" id="btn-next" title="다음">⏭</button>
+        <button class="ctrl-btn" id="btn-fadeout" title="페이드아웃 정지 (2초)">
+          <svg class="ctrl-svg" viewBox="0 0 24 24" fill="none">
+            <defs>
+              <linearGradient id="fade-grad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="currentColor" stop-opacity="1"/>
+                <stop offset="100%" stop-color="currentColor" stop-opacity="0.1"/>
+              </linearGradient>
+            </defs>
+            <rect x="3" y="6" width="5" height="12" rx="1" fill="currentColor"/>
+            <rect x="10" y="6" width="5" height="12" rx="1" fill="url(#fade-grad)"/>
+            <rect x="17" y="6" width="4" height="12" rx="1" fill="currentColor" opacity="0.1"/>
+          </svg>
+        </button>
         <button class="ctrl-btn" id="btn-repeat" title="반복">↻</button>
       </div>
       <div class="player-volume">

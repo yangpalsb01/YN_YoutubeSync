@@ -278,9 +278,14 @@ a { color: var(--accent); text-decoration: none; }
 .player-controls { display: flex; align-items: center; gap: 0.15rem; }
 .ctrl-btn {
   background: none; border: none; color: var(--text-muted);
-  font-size: 1.1rem; cursor: pointer; padding: 0.32rem 0.48rem;
+  font-size: 1.1rem; cursor: pointer; padding: 0;
   border-radius: 6px; transition: all 0.12s;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
 }
+/* SVG 아이콘 크기 통일 */
+.ctrl-svg { width: 17px; height: 17px; flex-shrink: 0; }
 .ctrl-btn:hover { color: var(--accent); background: var(--surface3); }
 .ctrl-btn--main {
   font-size: 1.15rem; color: #fff !important;
