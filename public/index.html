@@ -100,8 +100,11 @@
     let pendingRoomId = null;
 
     async function loadRooms() {
-      const res = await fetch('/api/rooms');
-      const rooms = await res.json();
+      let rooms;
+      try {
+        const res = await fetch('/api/rooms');
+        rooms = await res.json();
+      } catch (e) { return; } // 서버 응답 없을 시 조용히 무시
       const list = document.getElementById('room-list');
       if (rooms.length === 0) { list.innerHTML = '<p class="empty-hint">아직 열린 방이 없습니다.</p>'; return; }
       list.innerHTML = rooms.map(r => `

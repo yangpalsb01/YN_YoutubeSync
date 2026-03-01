@@ -117,6 +117,13 @@ socket.on('play', ({ videoId, time }) => {
 
 socket.on('pause', ({ time }) => {
   if (roomState) roomState.isPlaying = false;
+  // 페이드아웃 진행 중이었다면 타이머 정리
+  if (fadeTimer) {
+    clearInterval(fadeTimer);
+    fadeTimer = null;
+    const fb = document.getElementById('btn-fadeout');
+    if (fb) { fb.style.opacity = ''; fb.style.pointerEvents = ''; }
+  }
   if (ytPlayer && ytReady) { ytPlayer.pauseVideo(); if (time !== undefined) ytPlayer.seekTo(time, true); }
   updatePlayBtn(false);
   const gIcon2 = document.getElementById('guest-playing-icon'); if (gIcon2) gIcon2.textContent = '⏸';
@@ -356,6 +363,8 @@ document.getElementById('btn-fadeout').addEventListener('click', () => {
   const btn = document.getElementById('btn-fadeout');
   btn.style.opacity = '0.5';
   btn.style.pointerEvents = 'none';
+  const volSlider = document.getElementById('volume-slider');
+  if (volSlider) volSlider.disabled = true;
 
   fadeTimer = setInterval(() => {
     step++;
@@ -371,6 +380,8 @@ document.getElementById('btn-fadeout').addEventListener('click', () => {
         ytPlayer.setVolume(startVol);
         btn.style.opacity = '';
         btn.style.pointerEvents = '';
+        const vs = document.getElementById('volume-slider');
+        if (vs) vs.disabled = false;
       }, 100);
     }
   }, INTERVAL);
