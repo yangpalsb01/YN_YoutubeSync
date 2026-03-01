@@ -44,7 +44,7 @@ const THEMES = [
   // ── Dark ──────────────────────────────────────
   {
     id: 'dark-hotpink', name: 'Hot Pink', dark: true,
-    vars: { '--bg':'#160810','--bg2':'#200e18','--surface':'#1e0e18','--surface2':'#260e1e','--surface3':'#2e1428','--border':'#3a1830','--border2':'#501838','--accent':'#f80189','--accent2':'#ff40a8','--text':'#f8e0f0','--text-muted':'#803060','--text-light':'#602040' }
+    vars: { '--bg':'#141414','--bg2':'#1c1c1c','--surface':'#1a1a1a','--surface2':'#202020','--surface3':'#282828','--border':'#2e2e2e','--border2':'#3a3a3a','--accent':'#f80189','--accent2':'#ff40a8','--text':'#f5f5f5','--text-muted':'#686868','--text-light':'#484848' }
   },
   {
     id: 'dark-yellow', name: 'Yellow', dark: true,
@@ -52,15 +52,15 @@ const THEMES = [
   },
   {
     id: 'dark-mint', name: 'Mint', dark: true,
-    vars: { '--bg':'#101818','--bg2':'#182020','--surface':'#162020','--surface2':'#1c2828','--surface3':'#203030','--border':'#1e3030','--border2':'#2a4040','--accent':'#83f1e9','--accent2':'#a8f8f0','--text':'#e0f8f6','--text-muted':'#3a7070','--text-light':'#285050' }
+    vars: { '--bg':'#141414','--bg2':'#1c1c1c','--surface':'#1a1a1a','--surface2':'#202020','--surface3':'#282828','--border':'#2e2e2e','--border2':'#3a3a3a','--accent':'#83f1e9','--accent2':'#a8f8f0','--text':'#f5f5f5','--text-muted':'#686868','--text-light':'#484848' }
   },
   {
     id: 'dark-forest', name: 'Forest Night', dark: true,
-    vars: { '--bg':'#141c18','--bg2':'#1c2820','--surface':'#1a2420','--surface2':'#202e28','--surface3':'#263830','--border':'#253020','--border2':'#304030','--accent':'#5a9e6f','--accent2':'#78b888','--text':'#c8dfc0','--text-muted':'#4a6650','--text-light':'#344a3c' }
+    vars: { '--bg':'#141414','--bg2':'#1c1c1c','--surface':'#1a1a1a','--surface2':'#202020','--surface3':'#282828','--border':'#2e2e2e','--border2':'#3a3a3a','--accent':'#5a9e6f','--accent2':'#78b888','--text':'#f5f5f5','--text-muted':'#686868','--text-light':'#484848' }
   },
   {
     id: 'dark-navy', name: 'Midnight Blue', dark: true,
-    vars: { '--bg':'#0e1624','--bg2':'#162030','--surface':'#141e2e','--surface2':'#1a2838','--surface3':'#203040','--border':'#1e2d44','--border2':'#2a3e58','--accent':'#4a7fc1','--accent2':'#6898d8','--text':'#d0ddf0','--text-muted':'#3d5470','--text-light':'#2a3c58' }
+    vars: { '--bg':'#141414','--bg2':'#1c1c1c','--surface':'#1a1a1a','--surface2':'#202020','--surface3':'#282828','--border':'#2e2e2e','--border2':'#3a3a3a','--accent':'#4a7fc1','--accent2':'#6898d8','--text':'#f5f5f5','--text-muted':'#686868','--text-light':'#484848' }
   },
   {
     id: 'dark-obsidian', name: 'Obsidian', dark: true,
