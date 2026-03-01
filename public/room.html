@@ -37,7 +37,10 @@
     </div>
 
     <div class="room-header-right">
-      <span class="nickname-display" id="my-nickname"></span>
+      <span class="nickname-display">
+        <svg class="nickname-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" style="fill:var(--accent)"/></svg>
+        <span id="my-nickname"></span>
+      </span>
     </div>
   </header>
 
@@ -60,7 +63,7 @@
         <button class="ctrl-btn" id="btn-prev" title="이전">⏮</button>
         <button class="ctrl-btn ctrl-btn--main" id="btn-playpause">▶</button>
         <button class="ctrl-btn" id="btn-next" title="다음">⏭</button>
-        <button class="ctrl-btn" id="btn-fadeout" title="페이드아웃 정지 (2초)">
+        <button class="ctrl-btn" id="btn-fadeout" title="페이드아웃 정지 (3초)">
           <svg class="ctrl-svg" viewBox="0 0 24 24" fill="none">
             <defs>
               <linearGradient id="fade-grad" x1="0" y1="0" x2="1" y2="0">

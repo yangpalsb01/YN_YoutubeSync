@@ -340,14 +340,14 @@ document.getElementById('btn-prev').onclick = () => {
 document.getElementById('btn-shuffle').onclick = () => isHost && socket.emit('toggle-shuffle');
 document.getElementById('btn-repeat').onclick  = () => isHost && socket.emit('toggle-repeat');
 
-// 페이드아웃 정지 (2초)
+// 페이드아웃 정지 (3초)
 let fadeTimer = null;
 document.getElementById('btn-fadeout').addEventListener('click', () => {
   if (!isHost || !ytPlayer || !ytReady) return;
   if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) return;
   if (fadeTimer) return; // 이미 페이드 중
 
-  const DURATION = 2000; // 2초
+  const DURATION = 3000; // 3초
   const INTERVAL = 50;   // 50ms 간격
   const steps = DURATION / INTERVAL;
   const startVol = ytPlayer.getVolume();

@@ -226,7 +226,8 @@ a { color: var(--accent); text-decoration: none; }
 .code-badge:hover { border-color: var(--accent); color: var(--accent); }
 .code-badge strong { font-family: 'Courier New', monospace; letter-spacing: 0.15em; }
 .room-header-right { font-size: 0.8rem; color: var(--text-muted); flex-shrink: 0; }
-.nickname-display::before { content: '👤 '; color: var(--accent); }
+.nickname-display { display: flex; align-items: center; gap: 0.3rem; }
+.nickname-icon { width: 14px; height: 14px; color: var(--accent) !important; flex-shrink: 0; }
 
 /* Player bar */
 .player-bar {
