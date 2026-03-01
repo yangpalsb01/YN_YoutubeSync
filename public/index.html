@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JukeSync</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <script src="/js/themes.js"></script>
 </head>
 <body class="lobby-page">
 
@@ -79,6 +80,19 @@
         <button class="btn btn--primary" id="join-modal-confirm">입장</button>
         <button class="btn btn--ghost" id="join-modal-cancel">취소</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Theme Picker -->
+  <div class="theme-picker" id="theme-picker">
+    <button class="theme-picker-toggle" id="theme-picker-toggle" title="테마 변경">🎨</button>
+    <div class="theme-panel hidden" id="theme-panel">
+      <div class="theme-panel-header">
+        <button class="theme-tab active" data-tab="light">라이트</button>
+        <button class="theme-tab" data-tab="dark">다크</button>
+      </div>
+      <div class="theme-swatches" id="theme-swatches-light"></div>
+      <div class="theme-swatches hidden" id="theme-swatches-dark"></div>
     </div>
   </div>
 
@@ -187,7 +201,52 @@
   // ... 기존 코드들 ...
 
     loadRooms();
-    // 5초에서 2초로 단축
     setInterval(loadRooms, 2000);
+
+    // ── 테마 피커 초기화 ──
+    const lightContainer = document.getElementById('theme-swatches-light');
+    const darkContainer  = document.getElementById('theme-swatches-dark');
+
+    THEMES.forEach(theme => {
+      const sw = document.createElement('button');
+      sw.className = 'theme-swatch';
+      sw.dataset.themeId = theme.id;
+      sw.title = theme.name;
+      const accent = theme.vars['--accent'];
+      const bg     = theme.vars['--bg'];
+      sw.style.background = `linear-gradient(135deg, ${bg} 50%, ${accent} 50%)`;
+      sw.style.borderColor = theme.vars['--border2'];
+      sw.addEventListener('click', () => applyTheme(theme.id));
+      (theme.dark ? darkContainer : lightContainer).appendChild(sw);
+    });
+
+    // 현재 테마 active 표시
+    const currentTheme = localStorage.getItem('jukesync-theme') || 'light-neutral';
+    document.querySelectorAll('.theme-swatch').forEach(el => {
+      el.classList.toggle('active', el.dataset.themeId === currentTheme);
+    });
+
+    // 탭 전환
+    document.querySelectorAll('.theme-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.theme-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const isDark = tab.dataset.tab === 'dark';
+        document.getElementById('theme-swatches-light').classList.toggle('hidden', isDark);
+        document.getElementById('theme-swatches-dark').classList.toggle('hidden', !isDark);
+      });
+    });
+
+    // 토글 열고 닫기
+    document.getElementById('theme-picker-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('theme-panel').classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('theme-picker').contains(e.target)) {
+        document.getElementById('theme-panel').classList.add('hidden');
+      }
+    });
+
   </script> </body>
 </html>
