@@ -592,7 +592,7 @@ function renderSongs(songs, playlistId, containerId) {
     if (isHost) {
       item.querySelector('.js-play-song').addEventListener('click', (e) => {
         e.stopPropagation();
-        socket.emit('play-song', { song });
+        socket.emit('play-song', { song, playMode: 'single' });
       });
       item.querySelector('.js-loop-song').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -622,7 +622,7 @@ function renderQueue(queue) {
 function playPlaylist(playlistId) {
   if (!isHost || !roomState) return;
   const pl = roomState.playlists.find(p => p.id === playlistId);
-  if (pl && pl.songs.length > 0) socket.emit('play-song', { song: pl.songs[0] });
+  if (pl && pl.songs.length > 0) socket.emit('play-song', { song: pl.songs[0], playMode: 'playlist' });
 }
 
 function deletePlaylist(id) {

@@ -102,6 +102,7 @@ function sanitizeRoom(room) {
     volume:      room.volume,
     shuffle:     room.shuffle,
     repeat:      room.repeat,
+    playMode:    room.playMode,
   };
 }
 
@@ -126,6 +127,7 @@ app.post('/api/rooms', async (req, res) => {
     volume:        80,
     shuffle:       false,
     repeat:        'none',
+    playMode:      'single',
     lastTimeUpdate: Date.now(),
   };
   rooms[id] = room;
@@ -274,11 +276,12 @@ io.on('connection', (socket) => {
   }));
 
   // Play specific song
-  socket.on('play-song', ({ song }) => hostAction(room => {
+  socket.on('play-song', ({ song, playMode }) => hostAction(room => {
     room.currentSong   = song;
     room.currentTime   = 0;
     room.isPlaying     = true;
     room.lastTimeUpdate = Date.now();
+    room.playMode      = playMode || 'single'; // 'single' | 'playlist'
     io.to(socket.roomId).emit('play-song', { song });
     saveRoomDebounced(room);
   }));
@@ -334,13 +337,30 @@ io.on('connection', (socket) => {
 
   // Song ended
   socket.on('song-ended', () => hostAction(room => {
-    // 곡 단위 반복이 켜진 경우 해당 곡을 반복 (전체/한곡 반복보다 우선)
+    // 우선순위 1: 곡 단위 loop 플래그
     if (room.currentSong?.loop) {
       room.currentTime = 0;
       io.to(socket.roomId).emit('play-song', { song: room.currentSong });
+
+    // 우선순위 2: 한곡반복(repeat=one)
     } else if (room.repeat === 'one') {
       room.currentTime = 0;
       io.to(socket.roomId).emit('play-song', { song: room.currentSong });
+
+    // 우선순위 3: 단곡 재생 모드(playMode=single)
+    } else if (room.playMode === 'single') {
+      if (room.repeat === 'all') {
+        // 전체반복 ON → 그 한 곡을 무한 반복 (대기열에 그 곡만 있는 것과 동일하게 취급)
+        room.currentTime = 0;
+        io.to(socket.roomId).emit('play-song', { song: room.currentSong });
+      } else {
+        // 반복 OFF → 정지
+        room.isPlaying   = false;
+        room.currentSong = null;
+        io.to(socket.roomId).emit('stop');
+      }
+
+    // 우선순위 4: 플레이리스트 재생 모드(playMode=playlist)
     } else {
       const next = getNextSong(room);
       if (next) {
