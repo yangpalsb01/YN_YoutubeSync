@@ -148,6 +148,14 @@ app.get('/api/rooms', (req, res) => {
   res.json(roomList);
 });
 
+// Admin: 방 목록 + hostNickname
+app.get('/api/admin/rooms', (req, res) => {
+  if (req.headers['x-admin-password'] !== '7224') return res.status(401).json({ error: '인증 실패' });
+  const roomList = Object.values(rooms).map(r => ({ id: r.id, name: r.name, code: r.code, hostNickname: r.hostNickname }));
+  roomList.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR', { numeric: true, sensitivity: 'base' }));
+  res.json(roomList);
+});
+
 // Get room
 app.get('/api/rooms/:id', (req, res) => {
   const room = rooms[req.params.id];

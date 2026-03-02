@@ -10,9 +10,17 @@
 <body class="lobby-page">
 
   <header class="site-header">
-    <div class="logo">
-      <span class="logo-icon">♪</span>
-      <span class="logo-text">JukeSync</span>
+    <div style="display:flex;align-items:center;gap:0.6rem;">
+      <div class="logo">
+        <span class="logo-icon">♪</span>
+        <span class="logo-text">JukeSync</span>
+      </div>
+      <button class="admin-btn" id="admin-btn" title="관리자">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </button>
     </div>
     <p class="tagline" style="display:none;"></p>
     <div class="site-notice">
@@ -83,6 +91,48 @@
     </div>
   </div>
 
+  <!-- Create Room Confirm Modal -->
+  <div class="modal hidden" id="create-confirm-modal">
+    <div class="modal-box">
+      <h3>방을 만들기 전에 확인해주세요</h3>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin:0.6rem 0 0.2rem;">입력하신 닉네임</p>
+      <p id="confirm-nickname-display" style="font-weight:700;font-size:1.1rem;color:var(--accent);margin-bottom:1rem;"></p>
+      <ul style="font-size:0.84rem;color:var(--text-muted);line-height:1.8;padding-left:1.1rem;margin-bottom:1.2rem;">
+        <li>이 닉네임을 기억해두세요. 재입장 시 같은 닉네임을 사용해야 호스트 권한이 유지됩니다.</li>
+        <li>닉네임을 잊어버린 경우 양농에게 문의해주세요.</li>
+
+      </ul>
+      <div class="modal-actions">
+        <button class="btn btn--primary" id="create-confirm-ok">방 만들기</button>
+        <button class="btn btn--ghost" id="create-confirm-cancel">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div class="modal hidden" id="admin-login-modal">
+    <div class="modal-box" style="max-width:320px;">
+      <h3>관리자 로그인</h3>
+      <input type="password" id="admin-pw-input" class="input" placeholder="비밀번호" style="margin-top:0.8rem;" />
+      <p class="form-error hidden" id="admin-pw-error">비밀번호가 틀렸습니다.</p>
+      <div class="modal-actions">
+        <button class="btn btn--primary" id="admin-login-confirm">확인</button>
+        <button class="btn btn--ghost" id="admin-login-cancel">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Info Modal -->
+  <div class="modal hidden" id="admin-info-modal">
+    <div class="modal-box" style="max-width:440px;">
+      <h3>방 목록 (관리자)</h3>
+      <div id="admin-room-list" style="margin-top:0.8rem;display:flex;flex-direction:column;gap:0.5rem;max-height:360px;overflow-y:auto;"></div>
+      <div class="modal-actions" style="justify-content:center;margin-top:1.2rem;">
+        <button class="btn btn--ghost" id="admin-info-close">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Theme Picker -->
   <div class="theme-picker" id="theme-picker">
     <button class="theme-picker-toggle" id="theme-picker-toggle" title="테마 변경">🎨</button>
@@ -131,17 +181,30 @@
     };
     document.getElementById('join-modal-cancel').onclick = () => document.getElementById('join-modal').classList.add('hidden');
 
-    document.getElementById('create-room-btn').onclick = async () => {
+    // 방 만들기: 확인 모달 먼저 표시
+    document.getElementById('create-room-btn').onclick = () => {
       const name = document.getElementById('room-name-input').value.trim();
       const nick = document.getElementById('host-nickname-input').value.trim();
-      const err = document.getElementById('create-error');
+      const err  = document.getElementById('create-error');
       if (!name) { showError(err, '방 이름을 입력해주세요.'); return; }
       if (!nick) { showError(err, '닉네임을 입력해주세요.'); return; }
+      document.getElementById('confirm-nickname-display').textContent = nick;
+      document.getElementById('create-confirm-modal').classList.remove('hidden');
+    };
+
+    document.getElementById('create-confirm-ok').onclick = async () => {
+      const name = document.getElementById('room-name-input').value.trim();
+      const nick = document.getElementById('host-nickname-input').value.trim();
+      const err  = document.getElementById('create-error');
+      document.getElementById('create-confirm-modal').classList.add('hidden');
       const res = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, hostNickname: nick }) });
       const data = await res.json();
       if (data.error) { showError(err, data.error); return; }
       goToRoom(data.id, nick);
     };
+
+    document.getElementById('create-confirm-cancel').onclick = () =>
+      document.getElementById('create-confirm-modal').classList.add('hidden');
 
     document.getElementById('join-code-btn').onclick = async () => {
       const code = document.getElementById('join-code-input').value.trim();
@@ -205,6 +268,53 @@
 
     loadRooms();
     setInterval(loadRooms, 2000);
+
+    // ── 관리자 기능 ──
+    const ADMIN_PW = '7224';
+
+    document.getElementById('admin-btn').addEventListener('click', () => {
+      document.getElementById('admin-pw-input').value = '';
+      document.getElementById('admin-pw-error').classList.add('hidden');
+      document.getElementById('admin-login-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('admin-pw-input').focus(), 50);
+    });
+
+    document.getElementById('admin-login-cancel').onclick = () =>
+      document.getElementById('admin-login-modal').classList.add('hidden');
+
+    document.getElementById('admin-login-confirm').onclick = async () => {
+      const pw = document.getElementById('admin-pw-input').value;
+      if (pw !== ADMIN_PW) {
+        document.getElementById('admin-pw-error').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('admin-login-modal').classList.add('hidden');
+
+      // 방 목록 + hostNickname 조회
+      const res = await fetch('/api/admin/rooms', {
+        headers: { 'x-admin-password': ADMIN_PW }
+      });
+      const rooms = await res.json();
+      const container = document.getElementById('admin-room-list');
+      if (!rooms.length) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">열린 방이 없습니다.</p>';
+      } else {
+        container.innerHTML = rooms.map(r => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.7rem;background:var(--surface2);border-radius:6px;font-size:0.85rem;">
+            <span style="font-weight:600;color:var(--text);">${esc(r.name)}</span>
+            <span style="color:var(--text-muted);">호스트: <strong style="color:var(--accent);">${esc(r.hostNickname)}</strong></span>
+          </div>
+        `).join('');
+      }
+      document.getElementById('admin-info-modal').classList.remove('hidden');
+    };
+
+    document.getElementById('admin-pw-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('admin-login-confirm').click();
+    });
+
+    document.getElementById('admin-info-close').onclick = () =>
+      document.getElementById('admin-info-modal').classList.add('hidden');
 
     // ── 테마 피커 초기화 ──
     const lightContainer = document.getElementById('theme-swatches-light');
