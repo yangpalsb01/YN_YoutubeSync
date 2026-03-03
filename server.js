@@ -46,8 +46,12 @@ const rooms = {};
 async function loadRoomsFromDB() {
   const docs = await roomsCol.find({}).toArray();
   docs.forEach(doc => {
-    // _id 제거하고 캐시에 저장
     const { _id, ...room } = doc;
+    // 새로 추가된 필드가 없는 기존 문서에 기본값 보정
+    if (!room.playMode)      room.playMode      = 'single';
+    if (!room.hostLastSeen)  room.hostLastSeen  = null;
+    if (!room.playlists)     room.playlists     = [];
+    if (!room.queue)         room.queue         = [];
     rooms[room.id] = room;
   });
   console.log(`💾 ${docs.length}개 방 로드됨`);
@@ -266,7 +270,7 @@ io.on('connection', (socket) => {
     // 닉네임이 호스트 닉네임과 일치하면 호스트 권한 부여
     if (nickname && nickname.trim() === room.hostNickname) {
       room.hostSocketId = socket.id;
-      room.hostLastSeen = Date.now();
+      room.hostLastSeen = Date.now(); // 항상 갱신
       socket.isHost = true;
       saveRoomDebounced(room);
     } else {
