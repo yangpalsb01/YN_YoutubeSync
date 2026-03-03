@@ -59,7 +59,8 @@ socket.on('room-state', state => {
   }
 
   applyVolume(state.volume);
-  document.getElementById('volume-slider').value = state.volume;
+  const volSliderEl = document.getElementById('volume-slider');
+  if (volSliderEl) volSliderEl.value = state.volume;
   updateShuffleBtn(state.shuffle);
   updateRepeatBtn(state.repeat);
   // 첫 로드 시 모든 플레이리스트를 접힌 상태로 초기화
