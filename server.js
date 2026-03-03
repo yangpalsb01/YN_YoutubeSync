@@ -119,6 +119,7 @@ app.post('/api/rooms', async (req, res) => {
     id, name: name.trim(), code,
     hostNickname:  hostNickname.trim(),
     hostSocketId:  null,
+    hostLastSeen:  Date.now(),
     playlists:     [],
     queue:         [],
     currentSong:   null,
@@ -148,12 +149,41 @@ app.get('/api/rooms', (req, res) => {
   res.json(roomList);
 });
 
-// Admin: 방 목록 + hostNickname
+// Admin: 방 목록 + hostNickname + hostLastSeen
 app.get('/api/admin/rooms', (req, res) => {
   if (req.headers['x-admin-password'] !== '7224') return res.status(401).json({ error: '인증 실패' });
-  const roomList = Object.values(rooms).map(r => ({ id: r.id, name: r.name, code: r.code, hostNickname: r.hostNickname }));
+  const roomList = Object.values(rooms).map(r => ({
+    id: r.id, name: r.name, code: r.code,
+    hostNickname: r.hostNickname,
+    hostLastSeen: r.hostLastSeen || null,
+  }));
   roomList.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR', { numeric: true, sensitivity: 'base' }));
   res.json(roomList);
+});
+
+// Admin: 호스트 닉네임 변경
+app.patch('/api/admin/rooms/:id/host', (req, res) => {
+  if (req.headers['x-admin-password'] !== '7224') return res.status(401).json({ error: '인증 실패' });
+  const room = rooms[req.params.id];
+  if (!room) return res.status(404).json({ error: '방을 찾을 수 없습니다.' });
+  const { hostNickname } = req.body;
+  if (!hostNickname || !hostNickname.trim()) return res.status(400).json({ error: '닉네임을 입력해주세요.' });
+  room.hostNickname = hostNickname.trim();
+  saveRoomDebounced(room);
+  res.json({ ok: true });
+});
+
+// Admin: 방 이름 변경
+app.patch('/api/admin/rooms/:id/name', (req, res) => {
+  if (req.headers['x-admin-password'] !== '7224') return res.status(401).json({ error: '인증 실패' });
+  const room = rooms[req.params.id];
+  if (!room) return res.status(404).json({ error: '방을 찾을 수 없습니다.' });
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: '방 이름을 입력해주세요.' });
+  room.name = name.trim();
+  io.to(room.id).emit('room-renamed', { name: room.name });
+  saveRoomDebounced(room);
+  res.json({ ok: true });
 });
 
 // Get room
@@ -236,7 +266,9 @@ io.on('connection', (socket) => {
     // 닉네임이 호스트 닉네임과 일치하면 호스트 권한 부여
     if (nickname && nickname.trim() === room.hostNickname) {
       room.hostSocketId = socket.id;
+      room.hostLastSeen = Date.now();
       socket.isHost = true;
+      saveRoomDebounced(room);
     } else {
       socket.isHost = false;
     }

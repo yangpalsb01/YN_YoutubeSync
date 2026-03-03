@@ -260,6 +260,44 @@
     document.getElementById('admin-info-close').onclick = () =>
       document.getElementById('admin-info-modal').classList.add('hidden');
 
+    // 상대 시간 포맷
+    function timeAgo(ts) {
+      if (!ts) return '기록 없음';
+      const diff = Math.floor((Date.now() - ts) / 1000);
+      if (diff < 60)   return '방금 전';
+      if (diff < 3600) return Math.floor(diff / 60) + '분 전';
+      if (diff < 86400) return Math.floor(diff / 3600) + '시간 전';
+      return Math.floor(diff / 86400) + '일 전';
+    }
+
+    // 인라인 편집 공통 함수
+    function makeEditable(el, onSave) {
+      el.style.cursor = 'pointer';
+      el.title = '클릭하여 편집';
+      el.addEventListener('click', function startEdit() {
+        const current = el.textContent;
+        const input = document.createElement('input');
+        input.value = current;
+        input.style.cssText = 'font-size:inherit;font-weight:inherit;color:var(--accent);background:var(--surface);border:1px solid var(--accent);border-radius:4px;padding:0.1rem 0.3rem;width:120px;';
+        el.replaceWith(input);
+        input.focus(); input.select();
+        async function commit() {
+          const val = input.value.trim();
+          const span = document.createElement('span');
+          span.textContent = val || current;
+          span.style.cssText = el.style.cssText;
+          input.replaceWith(span);
+          makeEditable(span, onSave);
+          if (val && val !== current) await onSave(val);
+        }
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') input.blur();
+          if (e.key === 'Escape') { input.value = current; input.blur(); }
+        });
+      });
+    }
+
     async function refreshAdminRoomList() {
       try {
         const res = await fetch('/api/admin/rooms', {
@@ -274,18 +312,52 @@
         container.innerHTML = '';
         rooms.forEach(r => {
           const row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.7rem;background:var(--surface2);border-radius:6px;font-size:0.85rem;';
-          row.innerHTML = `
-            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text);" title="${esc(r.name)}">${esc(r.name)}</span>
-            <span style="flex-shrink:0;color:var(--text-muted);white-space:nowrap;">호스트: <strong style="color:var(--accent);">${esc(r.hostNickname)}</strong></span>
-            <button class="btn btn--sm btn--del" data-id="${esc(r.id)}" data-name="${esc(r.name)}" style="flex-shrink:0;border:1px solid var(--border);color:var(--text-muted);">✕</button>
-          `;
-          row.querySelector('button').addEventListener('click', async function() {
-            const id   = this.dataset.id;
-            const name = this.dataset.name;
-            if (!confirm(`"${name}" 방을 삭제하겠습니까?`)) return;
+          row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;padding:0.6rem 0.8rem;background:var(--surface2);border-radius:8px;font-size:0.84rem;';
+
+          // 방 이름 (인라인 편집)
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = r.name;
+          nameSpan.title = r.name;
+          nameSpan.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text);';
+          makeEditable(nameSpan, async (val) => {
+            await fetch(`/api/admin/rooms/${r.id}/name`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'x-admin-password': ADMIN_PW },
+              body: JSON.stringify({ name: val })
+            });
+            loadRooms();
+          });
+
+          // 호스트 닉네임 (인라인 편집)
+          const hostWrap = document.createElement('span');
+          hostWrap.style.cssText = 'flex-shrink:0;color:var(--text-muted);white-space:nowrap;';
+          hostWrap.innerHTML = '호스트: ';
+          const nickSpan = document.createElement('strong');
+          nickSpan.textContent = r.hostNickname;
+          nickSpan.style.cssText = 'color:var(--accent);';
+          makeEditable(nickSpan, async (val) => {
+            await fetch(`/api/admin/rooms/${r.id}/host`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'x-admin-password': ADMIN_PW },
+              body: JSON.stringify({ hostNickname: val })
+            });
+          });
+          hostWrap.appendChild(nickSpan);
+
+          // 마지막 접속 시간
+          const timeSpan = document.createElement('span');
+          timeSpan.textContent = timeAgo(r.hostLastSeen);
+          timeSpan.style.cssText = 'flex-shrink:0;color:var(--text-light);font-size:0.78rem;white-space:nowrap;';
+
+          // 삭제 버튼
+          const delBtn = document.createElement('button');
+          delBtn.textContent = '✕';
+          delBtn.className = 'btn btn--sm btn--del';
+          delBtn.style.cssText = 'flex-shrink:0;border:1px solid var(--border);color:var(--text-muted);';
+          delBtn.addEventListener('click', async () => {
+            if (!confirm(`"${r.name}" 방을 삭제하겠습니까?`)) return;
             try {
-              const delRes = await fetch(`/api/rooms/${id}/force`, {
+              const delRes = await fetch(`/api/rooms/${r.id}/force`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: ADMIN_PW })
@@ -294,10 +366,13 @@
               if (data.error) { alert(data.error); return; }
               await refreshAdminRoomList();
               loadRooms();
-            } catch(e) {
-              alert('삭제 중 오류가 발생했습니다.');
-            }
+            } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
           });
+
+          row.appendChild(nameSpan);
+          row.appendChild(hostWrap);
+          row.appendChild(timeSpan);
+          row.appendChild(delBtn);
           container.appendChild(row);
         });
       } catch(e) {
