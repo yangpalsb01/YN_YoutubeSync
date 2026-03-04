@@ -959,12 +959,19 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
   if (localStorage.getItem(COLLAPSED_KEY) === '1') {
     section.classList.add('collapsed');
     collapseBtn.textContent = '›';
+  } else {
+    collapseBtn.textContent = '‹';
   }
 
   collapseBtn.addEventListener('click', () => {
     const isCollapsed = section.classList.toggle('collapsed');
     collapseBtn.textContent = isCollapsed ? '›' : '‹';
     localStorage.setItem(COLLAPSED_KEY, isCollapsed ? '1' : '0');
+    // 접힌 상태에서는 너비 저장 안 함
+    if (!isCollapsed) {
+      const savedWidth = localStorage.getItem('jukesync-search-width');
+      if (savedWidth) section.style.width = savedWidth + 'px';
+    }
   });
 
   // ── 드래그 리사이즈 ──

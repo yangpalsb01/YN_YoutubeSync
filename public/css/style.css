@@ -831,20 +831,24 @@ a { color: var(--accent); text-decoration: none; }
   border-left: 1px solid var(--border);
   background: var(--surface);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   width: 500px;
   min-width: 200px;
   max-width: 700px;
   flex-shrink: 0;
 }
 .search-section.collapsed {
-  width: 18px !important;
-  min-width: 18px;
+  width: 0px !important;
+  min-width: 0px;
+  border-left: none;
+}
+.search-section.collapsed .search-inner {
+  display: none;
 }
 .search-section.resizing { transition: none; }
 /* 드래그 핸들 */
 .search-resize-handle {
-  position: absolute; left: 18px; top: 0;
+  position: absolute; left: 0; top: 0;
   width: 5px; height: 100%;
   cursor: col-resize; z-index: 10;
   background: transparent;
@@ -855,32 +859,28 @@ a { color: var(--accent); text-decoration: none; }
   opacity: 0.35;
 }
 .search-collapse-btn {
-  position: absolute; left: 0; top: 50%;
+  position: absolute;
+  left: -26px; top: 50%;
   transform: translateY(-50%);
-  width: 18px; min-width: 18px;
-  height: 56px;
+  width: 22px; height: 36px;
   background: var(--surface);
-  border: none; border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-right: none;
   cursor: pointer; color: var(--text-muted);
-  font-size: 0.85rem; display: flex;
+  font-size: 0.8rem; display: flex;
   align-items: center; justify-content: center;
-  z-index: 2; flex-shrink: 0;
+  z-index: 20;
   transition: color 0.15s, background 0.15s;
-  border-radius: 0 4px 4px 0;
+  border-radius: 4px 0 0 4px;
 }
-.search-collapse-btn:hover { color: var(--accent); background: var(--surface3); }
-.search-section.collapsed .search-collapse-btn { content: '›'; }
+.search-collapse-btn:hover { color: var(--accent); background: var(--surface2); }
 .search-inner {
   flex: 1; display: flex; flex-direction: column;
-  overflow: hidden; margin-left: 18px;
+  overflow: hidden;
   min-width: 0;
 }
-.search-section.collapsed .search-inner {
-  visibility: hidden; opacity: 0;
-  transition: opacity 0.15s;
-}
 .search-section-header {
-  padding: 0.65rem 0.9rem; border-bottom: none;
+  padding: 0.8rem 0.9rem 0.65rem; border-bottom: none;
   background: var(--surface); font-size: 0.7rem;
   text-transform: uppercase; letter-spacing: 0.1em;
   color: var(--text-muted); font-weight: 600; flex-shrink: 0;
