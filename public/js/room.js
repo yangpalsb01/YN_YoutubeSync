@@ -939,16 +939,23 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
 
 // ── YouTube Search ────────────────────────────
 (function() {
-  const section   = document.getElementById('search-section');
+  const section     = document.getElementById('search-section');
   const collapseBtn = document.getElementById('search-collapse-btn');
-  const input     = document.getElementById('yt-search-input');
-  const searchBtn = document.getElementById('yt-search-btn');
-  const results   = document.getElementById('yt-search-results');
+  const resizeHandle = document.getElementById('search-resize-handle');
+  const input       = document.getElementById('yt-search-input');
+  const searchBtn   = document.getElementById('yt-search-btn');
+  const results     = document.getElementById('yt-search-results');
 
   if (!section) return; // 게스트 화면엔 없음
 
-  // 접기 상태 복원
   const COLLAPSED_KEY = 'jukesync-search-collapsed';
+  const WIDTH_KEY     = 'jukesync-search-width';
+
+  // 너비 복원
+  const savedWidth = localStorage.getItem(WIDTH_KEY);
+  if (savedWidth) section.style.width = savedWidth + 'px';
+
+  // 접기 상태 복원
   if (localStorage.getItem(COLLAPSED_KEY) === '1') {
     section.classList.add('collapsed');
     collapseBtn.textContent = '›';
@@ -958,6 +965,30 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
     const isCollapsed = section.classList.toggle('collapsed');
     collapseBtn.textContent = isCollapsed ? '›' : '‹';
     localStorage.setItem(COLLAPSED_KEY, isCollapsed ? '1' : '0');
+  });
+
+  // ── 드래그 리사이즈 ──
+  resizeHandle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const startX     = e.clientX;
+    const startWidth = section.offsetWidth;
+    resizeHandle.classList.add('dragging');
+    section.classList.add('resizing');
+
+    function onMove(e) {
+      const delta    = startX - e.clientX; // 왼쪽으로 드래그 = 넓어짐
+      const newWidth = Math.min(700, Math.max(200, startWidth + delta));
+      section.style.width = newWidth + 'px';
+    }
+    function onUp() {
+      resizeHandle.classList.remove('dragging');
+      section.classList.remove('resizing');
+      localStorage.setItem(WIDTH_KEY, parseInt(section.style.width));
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   });
 
   // 검색 실행

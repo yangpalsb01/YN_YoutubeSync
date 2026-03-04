@@ -832,11 +832,27 @@ a { color: var(--accent); text-decoration: none; }
   background: var(--surface);
   position: relative;
   overflow: hidden;
-  transition: width 0.25s ease;
-  width: 360px;
+  width: 500px;
+  min-width: 200px;
+  max-width: 700px;
+  flex-shrink: 0;
 }
 .search-section.collapsed {
-  width: 18px;
+  width: 18px !important;
+  min-width: 18px;
+}
+.search-section.resizing { transition: none; }
+/* 드래그 핸들 */
+.search-resize-handle {
+  position: absolute; left: 18px; top: 0;
+  width: 5px; height: 100%;
+  cursor: col-resize; z-index: 10;
+  background: transparent;
+}
+.search-resize-handle:hover,
+.search-resize-handle.dragging {
+  background: var(--accent);
+  opacity: 0.35;
 }
 .search-collapse-btn {
   position: absolute; left: 0; top: 50%;
