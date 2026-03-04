@@ -153,6 +153,33 @@ app.get('/api/rooms', (req, res) => {
   res.json(roomList);
 });
 
+// YouTube search proxy (API 키를 클라이언트에 노출하지 않기 위해 서버에서 중계)
+app.get('/api/yt-search', async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ error: '검색어를 입력해주세요.' });
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'API 키가 설정되지 않았습니다.' });
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(q)}&key=${apiKey}`;
+    const r = await fetch(url);
+    const data = await r.json();
+    if (data.error) {
+      const reason = data.error.errors?.[0]?.reason;
+      if (reason === 'quotaExceeded') return res.status(429).json({ error: 'quota' });
+      return res.status(400).json({ error: data.error.message });
+    }
+    const items = (data.items || []).map(item => ({
+      videoId: item.id.videoId,
+      title: item.snippet.title,
+      channel: item.snippet.channelTitle,
+      thumb: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
+    }));
+    res.json({ items });
+  } catch (e) {
+    res.status(500).json({ error: '검색 중 오류가 발생했습니다.' });
+  }
+});
+
 // Admin: 방 목록 + hostNickname + hostLastSeen
 app.get('/api/admin/rooms', (req, res) => {
   if (req.headers['x-admin-password'] !== '7224') return res.status(401).json({ error: '인증 실패' });

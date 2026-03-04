@@ -122,6 +122,25 @@
       <div class="chat-log" id="chat-log"></div>
     </section>
 
+    <!-- YouTube Search Column -->
+    <section class="search-section" id="search-section">
+      <button class="search-collapse-btn" id="search-collapse-btn" title="검색창 접기/펼치기">‹</button>
+      <div class="search-inner" id="search-inner">
+        <div class="search-section-header">YouTube 검색</div>
+        <div class="search-input-wrap">
+          <input type="text" class="search-input" id="yt-search-input" placeholder="검색어 입력..." autocomplete="off" />
+          <button class="search-btn" id="yt-search-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+          </button>
+        </div>
+        <div class="search-results" id="yt-search-results">
+          <p class="search-hint">검색어를 입력하세요.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- Guest view: only shows current song -->
     <div class="guest-main" id="guest-main" style="display:none;">
       <div class="guest-now-playing-card">

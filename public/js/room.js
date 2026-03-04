@@ -936,3 +936,78 @@ document.getElementById('import-playlist-confirm').addEventListener('click', asy
 document.getElementById('import-code-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('import-playlist-confirm').click();
 });
+
+// ── YouTube Search ────────────────────────────
+(function() {
+  const section   = document.getElementById('search-section');
+  const collapseBtn = document.getElementById('search-collapse-btn');
+  const input     = document.getElementById('yt-search-input');
+  const searchBtn = document.getElementById('yt-search-btn');
+  const results   = document.getElementById('yt-search-results');
+
+  if (!section) return; // 게스트 화면엔 없음
+
+  // 접기 상태 복원
+  const COLLAPSED_KEY = 'jukesync-search-collapsed';
+  if (localStorage.getItem(COLLAPSED_KEY) === '1') {
+    section.classList.add('collapsed');
+    collapseBtn.textContent = '›';
+  }
+
+  collapseBtn.addEventListener('click', () => {
+    const isCollapsed = section.classList.toggle('collapsed');
+    collapseBtn.textContent = isCollapsed ? '›' : '‹';
+    localStorage.setItem(COLLAPSED_KEY, isCollapsed ? '1' : '0');
+  });
+
+  // 검색 실행
+  async function doSearch() {
+    const q = input.value.trim();
+    if (!q) return;
+    results.innerHTML = '<p class="search-hint">검색 중...</p>';
+    try {
+      const res = await fetch(`/api/yt-search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (data.error === 'quota') {
+        results.innerHTML = '<p class="search-hint">오늘의 검색 한도에 도달했습니다.<br/>URL을 직접 붙여넣어 곡을 추가해주세요.</p>';
+        return;
+      }
+      if (data.error) {
+        results.innerHTML = `<p class="search-hint">오류: ${data.error}</p>`;
+        return;
+      }
+      if (!data.items || data.items.length === 0) {
+        results.innerHTML = '<p class="search-hint">검색 결과가 없습니다.</p>';
+        return;
+      }
+      results.innerHTML = '';
+      data.items.forEach(item => {
+        const url = `https://www.youtube.com/watch?v=${item.videoId}`;
+        const el = document.createElement('div');
+        el.className = 'search-result-item';
+        el.innerHTML = `
+          <img class="search-result-thumb" src="${item.thumb}" alt="" loading="lazy" />
+          <div class="search-result-info">
+            <p class="search-result-title" title="${esc(item.title)}">${esc(item.title)}</p>
+            <p class="search-result-ch">${esc(item.channel)}</p>
+          </div>
+          <button class="search-copy-btn" title="URL 복사">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </button>
+        `;
+        el.querySelector('.search-copy-btn').addEventListener('click', () => {
+          navigator.clipboard.writeText(url).then(() => toast('URL 복사됨! 플레이리스트에 붙여넣으세요.', 'success'));
+        });
+        results.appendChild(el);
+      });
+    } catch(e) {
+      results.innerHTML = '<p class="search-hint">검색 중 오류가 발생했습니다.</p>';
+    }
+  }
+
+  searchBtn.addEventListener('click', doSearch);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+})();
