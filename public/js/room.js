@@ -1026,8 +1026,8 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
         el.innerHTML = `
           <img class="search-result-thumb" src="${item.thumb}" alt="" loading="lazy" />
           <div class="search-result-info">
-            <p class="search-result-title" title="${esc(item.title)}">${esc(item.title)}</p>
-            <p class="search-result-ch">${esc(item.channel)}</p>
+            <p class="search-result-title"></p>
+            <p class="search-result-ch"></p>
           </div>
           <button class="search-copy-btn" title="URL 복사">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
@@ -1036,6 +1036,12 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
             </svg>
           </button>
         `;
+        // textContent로 직접 삽입 (이중 인코딩 방지)
+        const titleEl = el.querySelector('.search-result-title');
+        const chEl    = el.querySelector('.search-result-ch');
+        titleEl.textContent = item.title;
+        titleEl.title       = item.title;
+        chEl.textContent    = item.channel;
         el.querySelector('.search-copy-btn').addEventListener('click', () => {
           navigator.clipboard.writeText(url).then(() => toast('URL 복사됨! 플레이리스트에 붙여넣으세요.', 'success'));
         });
