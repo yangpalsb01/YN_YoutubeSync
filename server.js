@@ -168,10 +168,19 @@ app.get('/api/yt-search', async (req, res) => {
       if (reason === 'quotaExceeded') return res.status(429).json({ error: 'quota' });
       return res.status(400).json({ error: data.error.message });
     }
+    // YouTube API는 제목에 HTML 엔티티를 포함해 반환하므로 디코딩
+    function decodeHtmlEntities(str) {
+      return str
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+    }
     const items = (data.items || []).map(item => ({
       videoId: item.id.videoId,
-      title: item.snippet.title,
-      channel: item.snippet.channelTitle,
+      title: decodeHtmlEntities(item.snippet.title),
+      channel: decodeHtmlEntities(item.snippet.channelTitle),
       thumb: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
     }));
     res.json({ items });
