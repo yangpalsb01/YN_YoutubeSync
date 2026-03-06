@@ -1102,13 +1102,22 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
       dropdown.appendChild(opt);
     });
 
-    // 버튼 위치 기준으로 드롭다운 위치 결정
+    // 버튼 위치 기준으로 드롭다운 위치 결정 (공간 부족 시 위쪽으로 펼침)
     document.body.appendChild(dropdown);
-    const rect = btn.getBoundingClientRect();
+    const rect   = btn.getBoundingClientRect();
     const ddRect = dropdown.getBoundingClientRect();
-    let top = rect.bottom + window.scrollY + 4;
-    let left = rect.left + window.scrollX - ddRect.width + rect.width;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    let top, left;
+    left = rect.left + window.scrollX - ddRect.width + rect.width;
     if (left < 4) left = 4;
+    if (spaceBelow >= ddRect.height + 8 || spaceBelow >= spaceAbove) {
+      // 아래 공간이 충분하거나 위보다 아래가 더 넓으면 아래로
+      top = rect.bottom + window.scrollY + 4;
+    } else {
+      // 위로 펼침
+      top = rect.top + window.scrollY - ddRect.height - 4;
+    }
     dropdown.style.top  = top + 'px';
     dropdown.style.left = left + 'px';
 

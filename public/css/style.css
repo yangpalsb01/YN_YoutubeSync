@@ -971,6 +971,8 @@ a { color: var(--accent); text-decoration: none; }
   padding: 4px;
   min-width: 160px;
   max-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
 }
 .search-add-dropdown-item {
   display: block; width: 100%;
