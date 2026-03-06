@@ -1029,12 +1029,19 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
             <p class="search-result-title"></p>
             <p class="search-result-ch"></p>
           </div>
-          <button class="search-copy-btn" title="URL 복사">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
-          </button>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+            <button class="search-copy-btn" title="URL 복사">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+            </button>
+            <button class="search-add-btn" title="플레이리스트에 추가">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
         `;
         // textContent로 직접 삽입 (이중 인코딩 방지)
         const titleEl = el.querySelector('.search-result-title');
@@ -1045,6 +1052,10 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
         el.querySelector('.search-copy-btn').addEventListener('click', () => {
           navigator.clipboard.writeText(url).then(() => toast('URL 복사됨! 플레이리스트에 붙여넣으세요.', 'success'));
         });
+        el.querySelector('.search-add-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openSearchAddDropdown(e.currentTarget, url, item.title, item.channel);
+        });
         results.appendChild(el);
       });
     } catch(e) {
@@ -1054,4 +1065,61 @@ document.getElementById('import-code-input').addEventListener('keydown', e => {
 
   searchBtn.addEventListener('click', doSearch);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+  // ── 플레이리스트 선택 드롭다운 ──
+  function openSearchAddDropdown(btn, url, ytTitle, ytChannel) {
+    // 기존 드롭다운 제거
+    document.querySelectorAll('.search-add-dropdown').forEach(d => d.remove());
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'search-add-dropdown';
+
+    // 플레이리스트 목록 + 개별 대기열 생성
+    const playlists = roomState?.playlists || [];
+    const items = [
+      ...playlists.map(pl => ({ label: pl.name, id: pl.id })),
+      { label: '개별 대기열', id: null, divider: playlists.length > 0 },
+    ];
+
+    items.forEach(item => {
+      if (item.divider) {
+        const hr = document.createElement('hr');
+        hr.style.cssText = 'border:none;border-top:1px solid var(--border);margin:3px 0;';
+        dropdown.appendChild(hr);
+      }
+      const opt = document.createElement('button');
+      opt.className = 'search-add-dropdown-item';
+      opt.textContent = item.label;
+      opt.addEventListener('click', () => {
+        dropdown.remove();
+        // 기존 모달 열기 (URL 자동 입력 + oembed로 제목 채우기)
+        openAddSong(item.id);
+        // URL 입력 후 oninput 트리거
+        const urlInput = document.getElementById('yt-url-input');
+        urlInput.value = url;
+        urlInput.dispatchEvent(new Event('input'));
+      });
+      dropdown.appendChild(opt);
+    });
+
+    // 버튼 위치 기준으로 드롭다운 위치 결정
+    document.body.appendChild(dropdown);
+    const rect = btn.getBoundingClientRect();
+    const ddRect = dropdown.getBoundingClientRect();
+    let top = rect.bottom + window.scrollY + 4;
+    let left = rect.left + window.scrollX - ddRect.width + rect.width;
+    if (left < 4) left = 4;
+    dropdown.style.top  = top + 'px';
+    dropdown.style.left = left + 'px';
+
+    // 바깥 클릭 시 닫기
+    setTimeout(() => {
+      document.addEventListener('click', function close(e) {
+        if (!dropdown.contains(e.target)) {
+          dropdown.remove();
+          document.removeEventListener('click', close);
+        }
+      });
+    }, 0);
+  }
 })();

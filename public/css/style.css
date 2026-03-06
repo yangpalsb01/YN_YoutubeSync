@@ -947,3 +947,36 @@ a { color: var(--accent); text-decoration: none; }
   transition: color 0.12s, border-color 0.12s;
 }
 .search-copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ── Search Add Button & Dropdown ───────────── */
+.search-add-btn {
+  flex-shrink: 0; width: 28px; height: 28px;
+  background: none; border: 1px solid var(--border);
+  border-radius: 5px; cursor: pointer; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.search-add-btn:hover { color: #fff; border-color: var(--accent); background: var(--accent); }
+
+.search-add-dropdown {
+  position: fixed; z-index: 9999;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  min-width: 160px;
+  max-width: 220px;
+}
+.search-add-dropdown-item {
+  display: block; width: 100%;
+  padding: 0.45rem 0.75rem;
+  background: none; border: none;
+  border-radius: 5px; cursor: pointer;
+  color: var(--text); font-size: 0.82rem;
+  text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: background 0.1s;
+}
+.search-add-dropdown-item:hover { background: var(--surface2); color: var(--accent); }
