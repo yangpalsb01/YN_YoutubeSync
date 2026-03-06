@@ -86,7 +86,12 @@ function saveRoomDebounced(room) {
 // 유틸
 // ──────────────────────────────────────────────
 function generateCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
 }
 
 function getRoomByCode(code) {
@@ -260,7 +265,8 @@ app.post('/api/share/playlist', async (req, res) => {
   // 6자리 대문자 코드 생성 (충돌 방지 재시도)
   let code, exists = true;
   while (exists) {
-    code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    code = Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     exists = await sharedPlCol.findOne({ code });
   }
   await sharedPlCol.insertOne({
