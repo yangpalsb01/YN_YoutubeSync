@@ -986,3 +986,26 @@ a { color: var(--accent); text-decoration: none; }
   transition: background 0.1s;
 }
 .search-add-dropdown-item:hover { background: var(--surface2); color: var(--accent); }
+
+/* ── Playlist Rename ─────────────────────────── */
+.playlist-rename-btn {
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 0.1rem 0.25rem;
+  color: var(--text-light);
+  flex-shrink: 0;
+}
+.playlist-header:hover .playlist-rename-btn { opacity: 1; }
+.playlist-rename-btn:hover { color: var(--accent) !important; }
+
+.playlist-rename-input {
+  flex: 1; min-width: 0;
+  font-size: 0.82rem; font-weight: 600;
+  color: var(--text);
+  background: var(--surface3);
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  outline: none;
+}

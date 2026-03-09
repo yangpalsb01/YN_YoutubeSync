@@ -519,6 +519,12 @@ function renderPlaylists(playlists) {
         <div class="playlist-drag-handle" title="드래그해서 순서 변경">⠿</div>
         <button class="playlist-collapse-btn js-collapse${isCollapsed ? ' collapsed' : ''}" title="${isCollapsed ? '펼치기' : '접기'}">▼</button>
         <span class="playlist-name">${esc(pl.name)}</span>
+        <button class="btn btn--icon playlist-rename-btn js-rename-pl" title="이름 변경">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
         <div class="playlist-actions">
           <button class="btn btn--icon js-add-song" title="곡 추가">＋</button>
           ${isHost ? '<button class="btn btn--icon btn--play-pl js-play-pl" title="첫 곡 재생">▶</button>' : ''}
@@ -533,6 +539,34 @@ function renderPlaylists(playlists) {
     if (isHost) section.querySelector('.js-play-pl').addEventListener('click', () => playPlaylist(pl.id));
     section.querySelector('.js-del-pl').addEventListener('click', () => deletePlaylist(pl.id));
     section.querySelector('.js-export-pl').addEventListener('click', () => exportPlaylist(pl));
+    section.querySelector('.js-rename-pl').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const nameEl = section.querySelector('.playlist-name');
+      const current = pl.name;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = current;
+      input.className = 'playlist-rename-input';
+      nameEl.replaceWith(input);
+      input.focus(); input.select();
+      section.querySelector('.playlist-rename-btn').style.opacity = '0';
+      function commit() {
+        const val = input.value.trim();
+        const newName = document.createElement('span');
+        newName.className = 'playlist-name';
+        newName.textContent = val || current;
+        input.replaceWith(newName);
+        section.querySelector('.playlist-rename-btn').style.opacity = '';
+        if (val && val !== current) {
+          socket.emit('rename-playlist', { playlistId: pl.id, name: val });
+        }
+      }
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') { input.value = current; input.blur(); }
+      });
+    });
     section.querySelector('.js-collapse').addEventListener('click', () => {
       const songList = document.getElementById('songs-' + pl.id);
       const btn = section.querySelector('.js-collapse');
